@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import numpy.ma as ma
+
 from scipy.stats import gmean
 
 
@@ -26,24 +28,23 @@ class RCLRTransformer:
         self.global_gmean = global_gmean
 
     def fit_transform(self, X):
-        transformed = X.copy()
-        if self.axis == 1:
-            transformed = transformed.T
+        
+        X_masked = ma.masked_array(X, mask=[X == 0])
+        
+        # TODO fix it in a better way
+        #https://stackoverflow.com/questions/21610198/
+        #runtimewarning-divide-by-zero-encountered-in-log
+        np.seterr(divide = 'ignore') 
+        
         if self.global_gmean:
-            gmean_ = gmean(transformed.values[np.where(transformed != 0)])
-            for col in transformed.columns:
-                col_tr = np.log(transformed[col][transformed[col]>0] /\
-                 gmean_)
-                transformed.loc[col_tr.index, col] = col_tr
-        else:
-            for col in transformed.columns:
-                col_tr = np.log(transformed[col][transformed[col]>0] /\
-                                gmean(transformed[col][transformed[col]>0]))
-                transformed.loc[col_tr.index, col] = col_tr
-        if self.axis == 1:
-            return transformed.T
-        else:
+            gmean_masked = gmean(X_masked, axis=None)
+            transformed = np.log(X / gmean_masked, where=X != 0)
             return transformed
+            
+        gmean_masked = gmean(X_masked, axis=self.axis)
+        transformed = np.log(X.divide(gmean_masked, axis=abs(self.axis-1)), 
+                             where=X != 0)
+
         return transformed
 
     def fit(self, X):
@@ -85,9 +86,11 @@ if __name__ == "__main__":
     assert np.allclose(res_0_None.values, expected_0_None)
    
     transformer = RCLRTransformer(global_gmean=True)
-    res_0_None = transformer.fit_transform(X)
-    assert np.allclose(res_0_None.values, expected_True)
+    res_1_True = transformer.fit_transform(X)
+    assert np.allclose(res_1_True.values, expected_True)
 
     transformer = RCLRTransformer(axis=0, global_gmean=True)
-    res_0_None = transformer.fit_transform(X)
-    assert np.allclose(res_0_None.values, expected_True)
+    res_0_True = transformer.fit_transform(X)
+    assert np.allclose(res_0_True.values, expected_True)
+    
+    print("Tests passed.")
