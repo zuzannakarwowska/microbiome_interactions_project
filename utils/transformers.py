@@ -6,9 +6,10 @@ from scipy.stats import gmean
 
 
 class RCLRTransformer:
-    """Transform features using RCLR.
+    """Transform features using Robust Centered Log-Ratio 
+    transformation (RCLR).
     
-    - By defult, a table is X_trans column-wise (axis=1),
+    - By defult, a table is transformed column-wise (axis=1),
       which preserves mean=0 across samples.
       This is different from the Scikit-Learn scalers.
     - If axis=None, elements are X_trans
@@ -17,8 +18,8 @@ class RCLRTransformer:
       
     Input
     -----
-    numpy.array or pandas.DataFrame with
-    rows (axis=0) as samples and columns (axis=1) as feattures.
+    pandas.DataFrame with rows (axis=0) as samples and 
+    columns (axis=1) as feattures.
 
     Parameters
     ----------
@@ -75,10 +76,74 @@ class RCLRTransformer:
             X = np.exp(X_trans, where=mask).multiply(
                 self.gmean_, axis=abs(self.axis-1))
         return X
+    
 
+class CLRTransformer:
+    """Transform features using Centered Log-Ratio 
+    transformation with pseudocounts (CLR).
+    
+    - By defult, a table is X_trans column-wise (axis=1),
+      which preserves mean=0 across samples.
+      This is different from the Scikit-Learn scalers.
+    - If axis=None, elements are X_trans
+      using global geometric mean. Note that in such case
+      X_trans data will not be zero-centered in any direction.
+      
+    Input
+    -----
+    numpy.array or pandas.DataFrame with
+    rows (axis=0) as samples and columns (axis=1) as feattures.
 
-if __name__ == "__main__":
+    Parameters
+    ----------
+    axis : int (0, 1 or None), default=1
+        Specifies direction in which geometric mean is computed.
+        If None, compute geometric mean globally (scalar value).
 
+    TODO:
+     - the method requires optimization (works too slow)
+    """
+
+    def __init__(self, axis=1, pseudo_perc=0.01, 
+                 is_pseudo_global=False):
+        self.axis = axis
+        self.pseudo_perc = pseudo_perc
+        self.is_pseudo_global = is_pseudo_global
+        # Pseudocounts can be added either globally or accross
+        # the same axis which is used for geometric mean.
+        if self.is_pseudo_global:
+            self.pseudo_axis = None
+        else:
+            self.pseudo_axis = axis
+        
+    def fit_transform(self, X):
+        return self.fit(X).transform(X)
+
+    def fit(self, X):
+        # Add pseudocounts to zero-valued entries
+        # and then compute geometric mean for later transforming.
+        X_nonzeros = ma.masked_array(X, mask=[X == 0])
+        X_zeros = ma.masked_array(X, mask=[X != 0])
+    
+        self.min_ = np.min(X_nonzeros, axis=self.pseudo_axis) *\
+        self.pseudo_perc
+
+        if self.axis == 1:
+            X_pseudo = (X_zeros.T + self.min_).T
+        else:
+            X_pseudo = X_zeros + self.min_
+            
+        self.gmean_ = gmean(X_pseudo.data, axis=self.axis)
+        return self
+
+    def transform(self, X):
+        pass
+
+    def inverse_transform(self, X_trans, mask):
+        pass
+    
+    
+def _test_RCLRTransformer():
     # TODO create unit test
     X = pd.DataFrame(np.array([[1, 0, 3, 6], 
                                [4, 5, 6, 7], 
@@ -145,5 +210,38 @@ if __name__ == "__main__":
     res_None = transformer.fit_transform(X)
     inv_res_None = transformer.inverse_transform(res_None, X!=0)
     assert np.allclose(inv_res_None.values, X)
+    print("RCLR tests passed.")
     
-    print("Tests passed.")
+
+def _test_CLRTransformer():
+    # TODO create unit test
+    X = pd.DataFrame(np.array([[1, 0, 3, 6], 
+                               [4, 5, 6, 0.7], 
+                               [2, 5.5, 0, 8.2]]))
+
+    # fit
+    transformer = CLRTransformer()
+    transformer.fit(X) 
+    assert np.allclose(transformer.min_, [0.01, 0.007,0.02])
+    
+    transformer = CLRTransformer(axis=0)
+    transformer.fit(X) 
+    assert np.allclose(transformer.min_, [0.01, 0.05, 0.03, 0.007])
+    
+    transformer = CLRTransformer(axis=None)
+    transformer.fit(X) 
+    assert np.allclose(transformer.min_, 0.007)
+
+    for axis in [0, 1, None]:
+        transformer = CLRTransformer(axis=axis, pseudo_perc=0.05,
+                                     is_pseudo_global=True)
+        transformer.fit(X) 
+        assert np.allclose(transformer.min_, 0.035)
+    
+    print("CLR tests passed.")
+    
+    
+if __name__ == "__main__":
+    
+    _test_RCLRTransformer()
+    _test_CLRTransformer()
