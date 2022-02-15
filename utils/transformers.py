@@ -179,10 +179,22 @@ class CLRTransformer:
     
 
 class Log1pMinMaxScaler:
+    """Transform features using log(1+X) and then scale 
+    each feature to a given range.
+
+    Input
+    -----
+    numpy.array or pandas.DataFrame with rows (axis=0) 
+    as samples and columns (axis=1) as features.
+
+    Parameters
+    ----------
+    The same as for sklearn.preprocessing.MinMaxScaler.
+    """
     
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Create a new min-max scaler
-        self.minmax_scaler = MinMaxScaler()
+        self.minmax_scaler = MinMaxScaler(*args, **kwargs)
     
     def fit_transform(self, X):
         return self.fit(X).transform(X)
@@ -395,7 +407,7 @@ def _test_Log1pMinMaxScaler():
     assert np.allclose(res, expected)
     
     # inverse transform
-    scaler = Log1pMinMaxScaler()
+    scaler = Log1pMinMaxScaler(feature_range=[-1, 2])
     res = scaler.fit_transform(X)
     inv_res = scaler.inverse_transform(res)
     assert np.allclose(inv_res, X)
