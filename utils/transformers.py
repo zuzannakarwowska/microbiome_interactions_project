@@ -3,8 +3,9 @@ import pandas as pd
 import numpy.ma as ma
 
 from scipy.stats import gmean
-
-
+from sklearn.preprocessing import MinMaxScaler
+    
+    
 class RCLRTransformer:
     """Transform features using Robust Centered Log-Ratio 
     transformation (RCLR).
@@ -174,6 +175,30 @@ class CLRTransformer:
             if remove_pseudocounts:
                 X -= pd.DataFrame(~mask).multiply(self.min_, 
                                                   axis=abs(self.axis-1))
+        return X
+    
+
+class Log1pMinMaxScaler:
+    
+    def __init__(self):
+        # Create a new min-max scaler
+        self.minmax_scaler = MinMaxScaler()
+    
+    def fit_transform(self, X):
+        return self.fit(X).transform(X)
+    
+    def fit(self, X):
+        # Fit the min-max scaler on log(1+X)
+        self.minmax_scaler.fit(np.log1p(X))
+        return self
+
+    def transform(self, X):
+        X_trans = self.minmax_scaler.transform(np.log1p(X))
+        return X_trans
+
+    def inverse_transform(self, X_trans):
+        X = self.minmax_scaler.inverse_transform(X_trans)
+        X = np.exp(X) - 1
         return X
     
     
@@ -352,8 +377,34 @@ def _test_CLRTransformer():
 
     print("CLR tests passed.")
     
+
+def _test_Log1pMinMaxScaler():
+    # TODO create unit test
+    X = pd.DataFrame(np.array([[1, 0, 3, 6], 
+                               [4, 5, 6, 0.7], 
+                               [2, 5.5, 0, 8.2]]))
+    
+    expected = np.array([[0., 0., 0.71241437, 0.83815152],
+                         [1., 0.95723762, 1., 0.],
+                         [0.44250705, 1., 0., 1.]])
+    
+    # fit transform
+    scaler = Log1pMinMaxScaler()
+    scaler.fit(X)
+    res = scaler.transform(X)
+    assert np.allclose(res, expected)
+    
+    # inverse transform
+    scaler = Log1pMinMaxScaler()
+    res = scaler.fit_transform(X)
+    inv_res = scaler.inverse_transform(res)
+    assert np.allclose(inv_res, X)
+
+    print("Log1pMinMax tests passed.")
+    
     
 if __name__ == "__main__":
     
     _test_RCLRTransformer()
     _test_CLRTransformer()
+    _test_Log1pMinMaxScaler()
