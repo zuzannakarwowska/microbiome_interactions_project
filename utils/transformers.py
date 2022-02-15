@@ -12,14 +12,14 @@ class RCLRTransformer:
     - By defult, a table is transformed column-wise (axis=1),
       which preserves mean=0 across samples.
       This is different from the Scikit-Learn scalers.
-    - If axis=None, elements are X_trans
+    - If axis=None, elements are transformed
       using global geometric mean. Note that in such case
       X_trans data will not be zero-centered in any direction.
       
     Input
     -----
     pandas.DataFrame with rows (axis=0) as samples and 
-    columns (axis=1) as feattures.
+    columns (axis=1) as features.
 
     Parameters
     ----------
@@ -76,12 +76,12 @@ class RCLRTransformer:
 
 class CLRTransformer:
     """Transform features using Centered Log-Ratio 
-    transformation with pseudocounts (CLR).
+    transformation with pseudocounts (CLR) (see [1]).
     
-    - By defult, a table is X_trans column-wise (axis=1),
+    - By defult, a table is transformed column-wise (axis=1),
       which preserves mean=0 across samples.
       This is different from the Scikit-Learn scalers.
-    - If axis=None, elements are X_trans
+    - If axis=None, elements are transformed
       using global geometric mean. Note that in such case
       X_trans data will not be zero-centered in any direction.
       
@@ -104,6 +104,10 @@ class CLRTransformer:
         If pseudocount is a global value (scaled minimum of the 
         whole input table). If True, then compute minimum
         using the `axis` parameter.
+        
+    References
+    ----------
+    [1] https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6755255/
     """
 
     def __init__(self, axis=1, pseudo_perc=0.01, 
