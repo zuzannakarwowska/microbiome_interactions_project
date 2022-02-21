@@ -9,6 +9,19 @@ from sklearn.metrics import f1_score, mean_squared_error
 from skbio.stats.ordination import pcoa
 
 
+"""Codebase for this module was delivered by 
+https://github.com/zuzannakarwowska"""
+
+
+def check_inputs(true, pred):
+    assert type(true) is pd.DataFrame, \
+    'Frist input is not of type pandas.DataFrame'
+    assert type(pred) is pd.DataFrame, \
+    'Second input is not of type pandas.DataFrame'
+    assert true.shape == pred.shape, \
+    f'Inputs have different shape: {true.shape} ! {pred.shape}'
+    
+    
 def continuous_to_multiclass(data):
     """Transform continuous data to multiclass"""
     data[data>0] = 1
@@ -23,8 +36,9 @@ def calculate_f1score(true, pred, model=None, return_scalar=False):
 
     Return
     ------
-    - vector or scalar (vector mean)
+    - vector or scalar (vector's mean)
     """
+    check_inputs(true, pred)
     true_m = continuous_to_multiclass(true.copy())
     pred_m = continuous_to_multiclass(pred.copy())
     res = true_m.combine(pred_m, f1_score).iloc[0]
@@ -34,19 +48,20 @@ def calculate_f1score(true, pred, model=None, return_scalar=False):
         return res.to_frame(model)
     
 
-def calculate_spearman(true, pred, model=None, return_scalar=False):
+def calculate_spearman(true, pred, model=None, return_tuple=False):
     """Calculate a Spearman correlation coefficient
     across columns between true and pred dataframes.
 
     Return
     ------
-    - vector or tuple (non-nan vector abs mean, number of nans)
+    - vector or tuple (non-nan vector's abs mean, number of nans)
     """
+    check_inputs(true, pred)
     coeffs = []
     for col in true.columns:
         rho, _ = spearmanr(true[col], pred[col])
         coeffs.append(rho)
-    if return_scalar:
+    if return_tuple:
         # Returns tuple: (non-nan abs mean, number of nans)
         return (np.nanmean(np.abs(coeffs)), 
                 np.count_nonzero(np.isnan(coeffs)))
@@ -55,16 +70,17 @@ def calculate_spearman(true, pred, model=None, return_scalar=False):
         return df
     
     
-def calculate_nrmse(true, pred, model=None, return_scalar=False):
+def calculate_nrmse(true, pred, model=None, return_tuple=False):
     """Calculate a normalized root mean squared error
     across columns between true and pred dataframes.
 
     Return
     ------
-    - vector or tuple (non-nan vector mean, number of nans)
+    - vector or tuple (non-nan vector's mean, number of nans)
     
     TODO: optimize using pandas.DataFrame.combine()
     """
+    check_inputs(true, pred)
     coeffs = []
     for col in true.columns:
         divider = true[col].max() - true[col].min()
@@ -75,10 +91,10 @@ def calculate_nrmse(true, pred, model=None, return_scalar=False):
             coeffs.append(np.nan)
         elif divider == 0 and nrmse == 0:
             coeffs.append(0)
-    if return_scalar:
+    if return_tuple:
         # Returns tuple: (non-nan mean, number of nans)
         return (np.nanmean(coeffs),
-                p.count_nonzero(np.isnan(coeffs)))
+                np.count_nonzero(np.isnan(coeffs)))
     else:
         df = pd.DataFrame(coeffs, columns=[model], index=true.columns)
         return df
@@ -90,8 +106,9 @@ def inter_dissimilarity(true, pred, model=None, return_scalar=False):
 
     Return
     ------
-    - vector or scalar (vector mean)
+    - vector or scalar (vector's mean)
     """
+    check_inputs(true, pred)
     res = true.T.combine(pred.T, braycurtis).iloc[0]
     if return_scalar:
         return np.mean(res)
@@ -99,16 +116,17 @@ def inter_dissimilarity(true, pred, model=None, return_scalar=False):
         return res.to_frame(model)
     
 
-def intra_dissimilarity(true, pred, model):
+def intra_dissimilarity(true, pred):
     """Calculate Bray-Curtis intra dissimilarity
     across indices (samples) between true and pred dataframes
     then perform PCOA and procrustes analysis.
     
     Return
     ------
-    - procrustes matrices (x, y) 
-    - scalar (disparity)
+    - two procrustes NumPy arrays: x, y 
+    - scalar: disparity
     """
+    check_inputs(true, pred)
     true_m = squareform(pdist(true, metric='braycurtis'))
     pred_m = squareform(pdist(pred, metric='braycurtis'))
     true_ordination = pcoa(true_m).samples
@@ -118,4 +136,5 @@ def intra_dissimilarity(true, pred, model):
 
 
 if __name__ == "__main__":
+    
     pass
