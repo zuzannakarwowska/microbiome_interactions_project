@@ -29,8 +29,9 @@ def continuous_to_multiclass(data):
     return data
 
 
-def calculate_f1score(true, pred, model=None, return_scalar=False):
-    """Calculate f1_score across columns between true 
+def calculate_f1score(true, pred, model=None, axis=0, 
+                      return_scalar=False):
+    """Calculate f1_score across axis between true 
     and pred dataframes using continuous to multiclass
     transformation.
 
@@ -41,6 +42,9 @@ def calculate_f1score(true, pred, model=None, return_scalar=False):
     check_inputs(true, pred)
     true_m = continuous_to_multiclass(true.copy())
     pred_m = continuous_to_multiclass(pred.copy())
+    if axis == 0:
+        true_m = true_m.T
+        pred_m = pred_m.T
     res = true_m.combine(pred_m, f1_score).iloc[0]
     if return_scalar:
         return np.mean(res)
@@ -136,5 +140,4 @@ def intra_dissimilarity(true, pred):
 
 
 if __name__ == "__main__":
-    
     pass
