@@ -362,27 +362,27 @@ def _test_CLRTransformer():
     inv_res_1_False = transformer.inverse_transform(res_1_False, X!=0)
     assert np.allclose(inv_res_1_False.values, X)
 
-    transformer = CLRTransformer()
+    transformer = CLRTransformer(axis=0)
     res_0_False = transformer.fit_transform(X)
     inv_res_0_False = transformer.inverse_transform(res_0_False, X!=0)
     assert np.allclose(inv_res_0_False.values, X)
     
-    transformer = CLRTransformer()
+    transformer = CLRTransformer(axis=None)
     res_None_False = transformer.fit_transform(X)
     inv_res_None_False = transformer.inverse_transform(res_None_False, X!=0)
     assert np.allclose(inv_res_None_False.values, X)
     
-    transformer = CLRTransformer()
+    transformer = CLRTransformer(is_pseudo_global=True)
     res_1_True = transformer.fit_transform(X)
     inv_res_1_True = transformer.inverse_transform(res_1_True, X!=0)
     assert np.allclose(inv_res_1_True.values, X)
 
-    transformer = CLRTransformer()
+    transformer = CLRTransformer(axis=0, is_pseudo_global=True)
     res_0_True = transformer.fit_transform(X)
     inv_res_0_True = transformer.inverse_transform(res_0_True, X!=0)
     assert np.allclose(inv_res_0_True.values, X)
     
-    transformer = CLRTransformer()
+    transformer = CLRTransformer(axis=None, is_pseudo_global=True)
     res_None_True = transformer.fit_transform(X)
     inv_res_None_True = transformer.inverse_transform(res_None_True, X!=0)
     assert np.allclose(inv_res_None_True.values, X)
