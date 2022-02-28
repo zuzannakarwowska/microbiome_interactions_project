@@ -212,6 +212,31 @@ class Log1pMinMaxScaler:
         X = self.minmax_scaler.inverse_transform(X_trans)
         X = np.exp(X) - 1
         return X
+
+class IdentityScaler:
+    """Does nothing with the input data.
+
+    Input
+    -----
+    numpy.array or pandas.DataFrame with rows (axis=0) 
+    as samples and columns (axis=1) as features.
+
+    """
+    
+    def __init__(self):
+        pass
+    
+    def fit_transform(self, X):
+        return self.fit(X).transform(X)
+    
+    def fit(self, X):
+        return self
+
+    def transform(self, X):
+        return X
+
+    def inverse_transform(self, X):
+        return X
     
     
 def _test_RCLRTransformer():
@@ -414,9 +439,32 @@ def _test_Log1pMinMaxScaler():
 
     print("Log1pMinMax tests passed.")
     
+
+def _test_IdentityScaler():
+    # TODO create unit test
+    X = pd.DataFrame(np.array([[1, 0, 3, 6], 
+                               [4, 5, 6, 0.7], 
+                               [2, 5.5, 0, 8.2]]))
+    
+    # fit transform
+    scaler = IdentityScaler()
+    scaler.fit(X)
+    res = scaler.transform(X)
+    assert np.allclose(res, X)
+    
+    # inverse transform
+    scaler = IdentityScaler()
+    res = scaler.fit_transform(X)
+    assert np.allclose(res, X)
+    inv_res = scaler.inverse_transform(res)
+    assert np.allclose(inv_res, X)
+
+    print("Identity tests passed.")
+    
     
 if __name__ == "__main__":
     
     _test_RCLRTransformer()
     _test_CLRTransformer()
     _test_Log1pMinMaxScaler()
+    _test_IdentityScaler()

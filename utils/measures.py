@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import warnings
 
 from scipy.stats import spearmanr
 from scipy.spatial import procrustes
@@ -62,9 +63,13 @@ def calculate_spearman(true, pred, model=None, return_tuple=False):
     """
     check_inputs(true, pred)
     coeffs = []
-    for col in true.columns:
-        rho, _ = spearmanr(true[col], pred[col])
-        coeffs.append(rho)
+    with warnings.catch_warnings():
+        # Supress SpearmanRConstantInputWarning
+        # (number of NaNs is returned anyway)
+        warnings.simplefilter("ignore")
+        for col in true.columns:
+            rho, _ = spearmanr(true[col], pred[col])
+            coeffs.append(rho)
     if return_tuple:
         # Returns tuple: (non-nan abs mean, number of nans)
         return (np.nanmean(np.abs(coeffs)), 
