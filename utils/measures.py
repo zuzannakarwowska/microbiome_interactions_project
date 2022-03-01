@@ -132,10 +132,10 @@ def intra_dissimilarity(true, pred):
     
     Return
     ------
-    - two PCoA ordination NumPy arrays: 
-      true_ordination, pred_ordination 
-    - two procrustes NumPy arrays: x, y 
-    - scalar: disparity
+    - two PCoA ordination Pandas dataframes: 
+      `true_ordination`, `pred_ordination` 
+    - two procrustes NumPy arrays: `x`, `y` 
+    - scalar: `disparity`
     """
     check_inputs(true, pred)
     true_m = squareform(pdist(true, metric='braycurtis'))

@@ -220,7 +220,6 @@ class IdentityScaler:
     -----
     numpy.array or pandas.DataFrame with rows (axis=0) 
     as samples and columns (axis=1) as features.
-
     """
     
     def __init__(self):
