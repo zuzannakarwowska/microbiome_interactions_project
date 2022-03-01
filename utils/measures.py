@@ -132,6 +132,8 @@ def intra_dissimilarity(true, pred):
     
     Return
     ------
+    - two PCoA ordination NumPy arrays: 
+      true_ordination, pred_ordination 
     - two procrustes NumPy arrays: x, y 
     - scalar: disparity
     """
@@ -141,7 +143,7 @@ def intra_dissimilarity(true, pred):
     true_ordination = pcoa(true_m).samples
     pred_ordination = pcoa(pred_m).samples
     x, y, disparity = procrustes(true_ordination, pred_ordination)
-    return x, y, disparity
+    return true_ordination, pred_ordination, x, y, disparity
 
 
 if __name__ == "__main__":
