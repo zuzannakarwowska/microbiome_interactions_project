@@ -31,7 +31,7 @@ def continuous_to_multiclass(data):
 
 
 def calculate_f1score(true, pred, model=None, axis=0, 
-                      return_scalar=False):
+                      return_tuple=False):
     """Calculate f1_score across axis between true 
     and pred dataframes using continuous to multiclass
     transformation.
@@ -47,8 +47,8 @@ def calculate_f1score(true, pred, model=None, axis=0,
         true_m = true_m.T
         pred_m = pred_m.T
     res = true_m.combine(pred_m, f1_score).iloc[0]
-    if return_scalar:
-        return np.mean(res)
+    if return_tuple:
+        return (np.mean(res), np.std(res))
     else:
         return res.to_frame(model)
     
@@ -71,8 +71,10 @@ def calculate_spearman(true, pred, model=None, return_tuple=False):
             rho, _ = spearmanr(true[col], pred[col])
             coeffs.append(rho)
     if return_tuple:
-        # Returns tuple: (non-nan abs mean, number of nans)
+        # Returns tuple: (non-nan abs mean, non-nan abs std, 
+        #                number of nans)
         return (np.nanmean(np.abs(coeffs)), 
+                np.nanstd(np.abs(coeffs)), 
                 np.count_nonzero(np.isnan(coeffs)))
     else:
         df = pd.DataFrame(coeffs, columns=[model], index=true.columns)
@@ -101,15 +103,15 @@ def calculate_nrmse(true, pred, model=None, return_tuple=False):
         elif divider == 0 and nrmse == 0:
             coeffs.append(0)
     if return_tuple:
-        # Returns tuple: (non-nan mean, number of nans)
-        return (np.nanmean(coeffs),
+        # Returns tuple: (non-nan mean, non-nan std, number of nans)
+        return (np.nanmean(coeffs), np.nanstd(coeffs),
                 np.count_nonzero(np.isnan(coeffs)))
     else:
         df = pd.DataFrame(coeffs, columns=[model], index=true.columns)
         return df
     
     
-def inter_dissimilarity(true, pred, model=None, return_scalar=False):
+def inter_dissimilarity(true, pred, model=None, return_tuple=False):
     """Calculate Bray-Curtis inter dissimilarity
     across indices (samples) between true and pred dataframes.
 
@@ -119,8 +121,8 @@ def inter_dissimilarity(true, pred, model=None, return_scalar=False):
     """
     check_inputs(true, pred)
     res = true.T.combine(pred.T, braycurtis).iloc[0]
-    if return_scalar:
-        return np.mean(res)
+    if return_tuple:
+        return (np.mean(res), np.std(res))
     else:
         return res.to_frame(model)
     
