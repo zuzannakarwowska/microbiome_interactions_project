@@ -33,7 +33,7 @@ def plot_series(train_true, train_pred, train_naive,
         #              test_inv_y[:, group-1]))  # absolute difference
         rmse = np.sqrt(mean_squared_error(train_true[:, group-1], 
                                           train_pred[:, group-1]))
-        plt.title(f'Train, {group}, {rmse:.3f}')
+        plt.title(f'Train (group: {group}, RMSE: {rmse:.2f})')
         plt.legend()
         plt.subplot(1, 2, 2)
     plt.plot(test_true[:, group-1], label='true')
@@ -44,7 +44,7 @@ def plot_series(train_true, train_pred, train_naive,
     #              test_inv_y[:, group-1]))  # absolute difference
     rmse = np.sqrt(mean_squared_error(test_true[:, group-1],
                                       test_pred[:, group-1]))
-    plt.title(f'Test, {group}, {rmse:.3f}')
+    plt.title(f'Test (gruup: {group}, RMSE: {rmse:.2f})')
     plt.legend()
     plt.show()
     
