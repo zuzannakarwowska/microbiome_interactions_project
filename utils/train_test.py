@@ -88,7 +88,6 @@ def split_reframed(reframed, cols, train_test_split=0.8,
     # (using everything would introduce redundancy)
     train_X = train_X[:, :, :cols] 
     test_X = test_X[:, :, :cols]
-    print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
     # Check if all dimensions agree
     assert len(reframed) == (train_X.shape[0] + test_X.shape[0]) * \
     no_of_timesteps + values_to_throw    

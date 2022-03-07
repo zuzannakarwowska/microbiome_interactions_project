@@ -33,6 +33,9 @@ class naive_predictor:
         self.type_ = type_
         self.n_in = n_in
         self.n_out = n_out
+        
+    def count_params(self):
+        return 0
  
     def predict(self, X):
         if self.n_in > 1 or self.n_out > 1:
@@ -67,7 +70,7 @@ def supervised_mlp(in_steps, in_features, out_features,
     model = Model(inputs=input_, outputs=output)
     model.compile(optimizer='adam', loss='mae')
     # model.summary()
-    print(f"Params: {model.count_params()}")
+    # print(f"Params: {model.count_params()}")
     return model
 
 
@@ -102,7 +105,7 @@ def sequential_mlp(in_steps, in_features, out_features,
     model = Model(inputs=visibles, outputs=output)
     model.compile(optimizer='adam', loss='mae')
     # model.summary()
-    print(f"Params: {model.count_params()}")
+    # print(f"Params: {model.count_params()}")
     return model
 
 
