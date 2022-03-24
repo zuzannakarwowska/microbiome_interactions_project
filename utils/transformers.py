@@ -5,7 +5,14 @@ import numpy.ma as ma
 from scipy.stats import gmean
 from sklearn.preprocessing import MinMaxScaler
     
-    
+
+def _transform_type(X):
+    if type(X) is not pd.DataFrame:
+            return pd.DataFrame(X)
+    else:
+        return X
+
+
 class RCLRTransformer:
     """Transform features using Robust Centered Log-Ratio 
     transformation (RCLR).
@@ -48,7 +55,8 @@ class RCLRTransformer:
     def transform(self, X):
         # Transform input data using geometric mean
         # computed with `self.fit()` method.
-        if not self.axis:
+        X = _transform_type(X)
+        if self.axis is None:
             X_trans = np.log(X / self.gmean_, 
                              where=X != 0)
         else:
@@ -66,8 +74,8 @@ class RCLRTransformer:
         # desired only for inputs transformed into zero by 
         # RCLR transform i.e. their values were equal to 
         # geometric mean.
-        # 
-        if not self.axis:
+        X_trans = _transform_type(X_trans)
+        if self.axis is None:
             X = np.exp(X_trans, where=mask) * self.gmean_
         else:
             X = np.exp(X_trans, where=mask).multiply(
@@ -148,10 +156,11 @@ class CLRTransformer:
     def transform(self, X):
         # Transform input data using geometric mean
         # computed with `self.fit()` method.
+        X = _transform_type(X)
         X_trans = self._add_pseudocounts(X)
         X_trans = pd.DataFrame(data=X_trans.data, 
                        index=X.index, columns=X.columns)
-        if not self.axis:
+        if self.axis is None:
             X_trans = np.log(X_trans / self.gmean_)
         else:
             X_trans = np.log(X_trans.divide(self.gmean_, 
@@ -165,7 +174,8 @@ class CLRTransformer:
         # specifies pseudocunt position.
         # If `remove_pseudocounts=False`, then
         # the `mask` parameter is not required.
-        if not self.axis:
+        X_trans = _transform_type(X_trans)
+        if self.axis is None:
             X = np.exp(X_trans) * self.gmean_
             if remove_pseudocounts:
                 X -= ~mask * self.min_
