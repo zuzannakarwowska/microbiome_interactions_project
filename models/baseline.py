@@ -26,11 +26,15 @@ class naive_predictor:
     n_out: int, default=1
         Number of output timesteps.
         
-    TODO: doesn't work yet for n_in > 1 or n_out > 1
+    n_cols: int
+        Number of last columns to be returned. 
+        
+    TODO: doesn't work yet for n_out > 1
     """
     
-    def __init__(self, type_, n_in=1, n_out=1):
+    def __init__(self, type_, cols, n_in=1, n_out=1):
         self.type_ = type_
+        self.cols = cols
         self.n_in = n_in
         self.n_out = n_out
         
@@ -38,13 +42,19 @@ class naive_predictor:
         return 0
  
     def predict(self, X):
-        if self.n_in > 1 or self.n_out > 1:
+        if self.n_out < 0 or self.n_in < 0:
+            raise ValueError
+        elif self.n_out > 1:
             raise NotImplementedError
         else:
+            # Return last `cols` entries
             if self.type_ == 'sup':
-                return X
+                return X[:,-self.cols:]
             elif self.type_ == 'seq':
-                return np.squeeze(np.array(X)).T
+                if self.n_in == 1:
+                    return np.squeeze(np.array(X)).T
+                if self.n_in > 1:
+                    return np.squeeze(np.array(X)).T[-1]
             
             
 def supervised_mlp(in_steps, in_features, out_features, 
