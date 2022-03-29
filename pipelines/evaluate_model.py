@@ -1,5 +1,6 @@
 import sys
 import pickle
+import json
 import joblib
 import argparse
 import numpy as np
@@ -43,7 +44,7 @@ def main():
     sname = args.scaler_name
     dname = args.dataset_name
 
-    print(f"Running evaluation for: {mname}, {itype}, {sname}, {dname}")
+    print(f"\nRunning evaluation for: {mname}, {itype}, {sname}, {dname}\n")
     
     INPUT_PATH = MAIN_PATH / f"{mname}_{itype}_{sname}_{dname}"
     OUT_PATH = INPUT_PATH / "scores"
@@ -69,7 +70,7 @@ def main():
     scaler = joblib.load(DATA_PATH / f'scaler_{dname}_{sname}.obj')
     data = np.load(INPUT_PATH / f'train_val_data.npz')
     
-    model_config = pickle.load(open(INPUT_PATH / 'model_config.pkl', 'rb'))
+    model_config = json.load(open(INPUT_PATH / 'model_config.json', 'r'))
     STEPS_IN = model_config['input timesteps']
     STEPS_OUT = model_config['output timesteps']
     in_features = model_config['input features']
@@ -93,8 +94,8 @@ def main():
     # Compute and save scores
     scores_train = calculate_measures(train_inv_y, train_inv_yhat)
     scores_val = calculate_measures(val_inv_y, val_inv_yhat)
-    pickle.dump(scores_train, open(OUT_PATH / f'{dname}_train.pkl', 'wb'))
-    pickle.dump(scores_val, open(OUT_PATH / f'{dname}_val.pkl', 'wb'))
+    json.dump(scores_train, open(OUT_PATH / f'{dname}_train.json', 'w'))
+    json.dump(scores_val, open(OUT_PATH / f'{dname}_val.json', 'w'))
     print(f"{dname} (train)", scores_train, '\n')
     print(f"{dname} (val)", scores_val, '\n')
         
@@ -130,7 +131,8 @@ def main():
         test_inv_yhat= scaler.inverse_transform(test_yhat, **sparams)
         # Compute and save scores
         scores_test = calculate_measures(test_inv_y, test_inv_yhat)
-        pickle.dump(scores_test, open(OUT_PATH / f'{test_dname}.pkl', 'wb'))
+        json.dump(scores_test, open(OUT_PATH / f'{test_dname}.json', 'w'))
+        
         print(test_dname, scores_test, '\n')
 
         

@@ -1,5 +1,6 @@
 import sys
 import pickle
+import json
 import joblib
 import argparse
 import numpy as np
@@ -177,8 +178,7 @@ def main():
         'fit shuffle': FIT_SHUFFLE,
     }
     
-    pickle.dump(model_config, open(OUT_PATH / 'model_config.pkl', 'wb'))
-    
+    json.dump(model_config, open(OUT_PATH / 'model_config.json', 'w'))
 
 if __name__ == '__main__':
     main()
