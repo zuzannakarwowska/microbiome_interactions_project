@@ -31,7 +31,6 @@ class naive_predictor:
         
     TODO: doesn't work yet for n_out > 1
     """
-    
     def __init__(self, type_, cols, n_in=1, n_out=1):
         self.type_ = type_
         self.cols = cols
@@ -67,7 +66,6 @@ def supervised_mlp(in_steps, in_features, out_features,
     Use the Mean Absolute Error (MAE) loss function and 
     the efficient Adam version of stochastic gradient descent.
     """
-    
     # Input layer
     input_ = Input(shape=(in_steps * in_features,))
     # Compression layer (optional)
@@ -82,6 +80,33 @@ def supervised_mlp(in_steps, in_features, out_features,
     # model.summary()
     # print(f"Params: {model.count_params()}")
     return model
+
+
+class SupervisedMLP(Model):
+    """Return fully supervised Keras multi-layer perceptron.
+    
+    Define one-headed MLP with `in_steps` times `in_features` 
+    inputs and one hidden layer with `out_features` predictions.
+    
+    This is subclass version of the functional model that needs 
+    to be compiled and fitted in order to be fully defined!
+    """
+    def __init__(self, in_steps, in_features, 
+                 out_features, pred_activation='relu'):
+        super().__init__()
+        # parameters
+        self.in_steps = in_steps
+        self.in_features = in_features
+        self.out_features = out_features
+        self.pred_activation = pred_activation
+        # layers
+        self.dense = Dense(self.out_features, 
+                            activation=self.pred_activation,
+                            # kernel_regularizer=L1L2(l1=0.0001, l2=0.0001),
+                            use_bias=True)
+
+    def call(self, inputs):
+        return self.dense(inputs)
 
 
 def sequential_mlp(in_steps, in_features, out_features, 
@@ -117,6 +142,44 @@ def sequential_mlp(in_steps, in_features, out_features,
     # model.summary()
     # print(f"Params: {model.count_params()}")
     return model
+
+
+class SequentialMLP(Model):
+    """Return Keras multi-layer perceptron with sequential 
+    input data.
+    
+    Define `in_features` independent multi-headed MLP 
+    with `in_steps` neurons in the first hidden layer, 
+    concatenate them and return `out_features` predictions.
+    
+    The input shape will be `in_steps` time steps with 
+    `in_features` features.
+    
+    This is subclass version of the functional model that needs 
+    to be compiled and fitted in order to be fully defined!
+    """
+    def __init__(self, in_steps, in_features, 
+                 out_features, pred_activation='relu'):
+        super().__init__()
+        # parameters
+        self.in_steps = in_steps
+        self.in_features = in_features
+        self.out_features = out_features
+        self.pred_activation = pred_activation
+        # layers
+        self.denses = []
+        for i in range(self.in_features):
+            self.denses.append(Dense(self.in_steps, activation='relu', 
+                                # kernel_regularizer=L1L2(l1=0.0001, l2=0.0001),
+                                use_bias=True))
+        self.output_ = Dense(self.out_features, 
+                             activation=self.pred_activation,
+                             use_bias=True)
+                               
+    def call(self, inputs):
+        merge = concatenate([self.denses[i](inputs[i]) 
+                             for i in range(self.in_features)])
+        return self.output_(merge)         
 
 
 if __name__ == '__main__':
