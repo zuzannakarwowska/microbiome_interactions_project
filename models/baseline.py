@@ -57,7 +57,8 @@ class naive_predictor:
             
             
 def supervised_mlp(in_steps, in_features, out_features, 
-                   pred_activation='relu'):
+                   pred_activation='relu', use_bias=True,
+                   L1=0.0001, L2=0.0001):
     """Return fully supervised Keras multi-layer perceptron.
     
     Define one-headed MLP with `in_steps` times `in_features` 
@@ -73,8 +74,8 @@ def supervised_mlp(in_steps, in_features, out_features,
     #                  use_bias=True)(input_)
     # Prediction layer
     output = Dense(out_features, activation=pred_activation, 
-                   # kernel_regularizer=L1L2(l1=0.0001, l2=0.0001), 
-                   use_bias=True)(input_)
+                   kernel_regularizer=L1L2(l1=L1, l2=L2), 
+                   use_bias=use_bias)(input_)
     model = Model(inputs=input_, outputs=output)
     model.compile(optimizer='adam', loss='mae')
     # model.summary()
@@ -91,26 +92,32 @@ class SupervisedMLP(Model):
     This is subclass version of the functional model that needs 
     to be compiled and fitted in order to be fully defined!
     """
-    def __init__(self, in_steps, in_features, 
-                 out_features, pred_activation='relu'):
+    def __init__(self, in_steps, in_features, out_features, 
+                 pred_activation='relu', use_bias=True,
+                 L1=0.0001, L2=0.0001):
         super().__init__()
         # parameters
         self.in_steps = in_steps
         self.in_features = in_features
         self.out_features = out_features
         self.pred_activation = pred_activation
+        self.use_bias = use_bias
+        self.L1 = L1
+        self.L2 = L2
         # layers
         self.dense = Dense(self.out_features, 
                             activation=self.pred_activation,
-                            # kernel_regularizer=L1L2(l1=0.0001, l2=0.0001),
-                            use_bias=True)
+                            kernel_regularizer=L1L2(l1=self.L1, l2=self.L2),
+                            use_bias=self.use_bias)
 
     def call(self, inputs):
         return self.dense(inputs)
 
 
 def sequential_mlp(in_steps, in_features, out_features, 
-                   pred_activation='relu'):
+                   input_activation='relu', pred_activation='relu', 
+                   use_input_bias=True, use_output_bias=True, 
+                   L1=0.001, L2=0.001):
     """Return Keras multi-layer perceptron with sequential 
     input data.
     
@@ -130,13 +137,13 @@ def sequential_mlp(in_steps, in_features, out_features,
     denses = []
     for i in range(in_features):
         visibles.append(Input(shape=(in_steps,)))
-        denses.append(Dense(in_steps, activation='relu', 
-                            # kernel_regularizer=L1(l1=0.0001), 
-                            use_bias=True)(visibles[i]))
+        denses.append(Dense(in_steps, activation=input_activation, 
+                            kernel_regularizer=L1L2(l1=L1, l2=L2), 
+                            use_bias=use_input_bias)(visibles[i]))
     # Merge input models
     merge = concatenate(denses)
     output = Dense(out_features, activation=pred_activation, 
-                   use_bias=True)(merge)
+                   use_bias=use_output_bias)(merge)
     model = Model(inputs=visibles, outputs=output)
     model.compile(optimizer='adam', loss='mae')
     # model.summary()
@@ -158,23 +165,31 @@ class SequentialMLP(Model):
     This is subclass version of the functional model that needs 
     to be compiled and fitted in order to be fully defined!
     """
-    def __init__(self, in_steps, in_features, 
-                 out_features, pred_activation='relu'):
+    def __init__(self, in_steps, in_features, out_features, 
+                 input_activation='relu', pred_activation='relu', 
+                 use_input_bias=True, use_output_bias=True, 
+                 L1=0.001, L2=0.001):
         super().__init__()
         # parameters
         self.in_steps = in_steps
         self.in_features = in_features
         self.out_features = out_features
+        self.input_activation = input_activation
         self.pred_activation = pred_activation
+        self.use_input_bias = use_input_bias
+        self.use_output_bias = use_output_bias
+        self.L1 = L1
+        self.L2 = L2
         # layers
         self.denses = []
         for i in range(self.in_features):
-            self.denses.append(Dense(self.in_steps, activation='relu', 
-                                # kernel_regularizer=L1L2(l1=0.0001, l2=0.0001),
-                                use_bias=True))
+            self.denses.append(Dense(self.in_steps, 
+                               activation=self.input_activation, 
+                               kernel_regularizer=L1L2(l1=self.L1, l2=self.L2),
+                               use_bias=self.use_input_bias))
         self.output_ = Dense(self.out_features, 
                              activation=self.pred_activation,
-                             use_bias=True)
+                             use_bias=self.use_output_bias)
                                
     def call(self, inputs):
         merge = concatenate([self.denses[i](inputs[i]) 

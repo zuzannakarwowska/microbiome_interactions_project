@@ -115,10 +115,10 @@ def main():
     
     if mname == 'mlp' and itype == 'supervised':
         model = supervised_mlp(in_steps, in_features, 
-                               out_features, pred_activation)    
+                               out_features, pred_activation=pred_activation)    
     elif mname == 'mlp' and itype == 'sequential':
         model = sequential_mlp(in_steps, in_features, 
-                               out_features, pred_activation)
+                               out_features, pred_activation=pred_activation)
     elif mname == 'naive' and itype == 'supervised':
         model = naive_predictor('sup', STEPS_IN, STEPS_OUT) 
     elif mname == 'naive' and itype == 'sequential':
