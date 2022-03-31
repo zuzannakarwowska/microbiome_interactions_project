@@ -10,7 +10,7 @@ FIT_SHUFFLE = True
 
 DATA_PATH = Path("/storage/zkarwowska/microbiome-interactions/"
                  "datasets/processed/ready_datasets_transformed/common")
-MAIN_PATH = Path(__file__).parent / "results" / "baseline"
+MAIN_PATH = Path(__file__).parent / "results" / "baseline_scalers"
 
 DATASETS = ['donorA', 'donorB', 'male', 'female']
 SCALERS = ['id', 'std', 'minmax', 'quantile10', 'quantile50', 'quantile100', 

@@ -111,7 +111,7 @@ class CLRTransformer:
         
     is_pseudo_global : bool, default=False
         If pseudocount is a global value (scaled minimum of the 
-        whole input table). If True, then compute minimum
+        whole input table). If False, then compute minimum
         using the `axis` parameter.
         
     References
