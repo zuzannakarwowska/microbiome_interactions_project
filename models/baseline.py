@@ -116,8 +116,9 @@ class SupervisedMLP(Model):
 
 def sequential_mlp(in_steps, in_features, out_features, 
                    input_activation='relu', pred_activation='relu', 
-                   use_input_bias=True, use_output_bias=True, 
-                   L1=0.001, L2=0.001):
+                   use_input_bias=True, use_pred_bias=True, 
+                   input_L1=0.001, input_L2=0.001,
+                   pred_L1=0.0001, pred_L2=0.0001):
     """Return Keras multi-layer perceptron with sequential 
     input data.
     
@@ -138,12 +139,13 @@ def sequential_mlp(in_steps, in_features, out_features,
     for i in range(in_features):
         visibles.append(Input(shape=(in_steps,)))
         denses.append(Dense(in_steps, activation=input_activation, 
-                            kernel_regularizer=L1L2(l1=L1, l2=L2), 
+                            kernel_regularizer=L1L2(l1=input_L1, l2=input_L2), 
                             use_bias=use_input_bias)(visibles[i]))
     # Merge input models
     merge = concatenate(denses)
     output = Dense(out_features, activation=pred_activation, 
-                   use_bias=use_output_bias)(merge)
+                   kernel_regularizer=L1L2(l1=pred_L1, l2=pred_L2),
+                   use_bias=use_pred_bias)(merge)
     model = Model(inputs=visibles, outputs=output)
     model.compile(optimizer='adam', loss='mae')
     # model.summary()
@@ -167,8 +169,9 @@ class SequentialMLP(Model):
     """
     def __init__(self, in_steps, in_features, out_features, 
                  input_activation='relu', pred_activation='relu', 
-                 use_input_bias=True, use_output_bias=True, 
-                 L1=0.001, L2=0.001):
+                 use_input_bias=True, use_pred_bias=True, 
+                 input_L1=0.001, input_L2=0.001,
+                 pred_L1=0.0001, pred_L2=0.0001):
         super().__init__()
         # parameters
         self.in_steps = in_steps
@@ -177,19 +180,24 @@ class SequentialMLP(Model):
         self.input_activation = input_activation
         self.pred_activation = pred_activation
         self.use_input_bias = use_input_bias
-        self.use_output_bias = use_output_bias
-        self.L1 = L1
-        self.L2 = L2
+        self.use_pred_bias = use_pred_bias
+        self.input_L1 = input_L1
+        self.input_L2 = input_L2
+        self.pred_L1 = pred_L1
+        self.pred_L2 = pred_L2
         # layers
         self.denses = []
         for i in range(self.in_features):
             self.denses.append(Dense(self.in_steps, 
                                activation=self.input_activation, 
-                               kernel_regularizer=L1L2(l1=self.L1, l2=self.L2),
+                               kernel_regularizer=L1L2(l1=self.input_L1, 
+                                                       l2=self.input_L2),
                                use_bias=self.use_input_bias))
         self.output_ = Dense(self.out_features, 
                              activation=self.pred_activation,
-                             use_bias=self.use_output_bias)
+                             kernel_regularizer=L1L2(l1=self.pred_L1, 
+                                                     l2=self.pred_L2),
+                             use_bias=self.use_pred_bias)
                                
     def call(self, inputs):
         merge = concatenate([self.denses[i](inputs[i]) 
