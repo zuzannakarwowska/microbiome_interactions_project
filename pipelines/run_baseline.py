@@ -27,7 +27,7 @@ from pipelines.baseline_config import (MAIN_PATH, DATASETS, SCALERS,
                                        KWARGS_SUP, KWARGS_SEQ, _dict_to_str)
 
 
-MODELS = ['naive']#, 'mlp']
+MODELS = ['mlp', 'naive']
 INPUT_TYPES = ['supervised', 'sequential']
     
     

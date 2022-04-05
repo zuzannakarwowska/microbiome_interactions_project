@@ -5,12 +5,12 @@ STEPS_OUT = 1
 TRAIN_TEST_SPLIT = 0.8
 EPOCHS = 100
 BATCH_SIZE = 16
+TRAIN_OVERLAP = True
 TRAIN_SHUFFLE = True
 FIT_SHUFFLE = True
 
 DATA_PATH = Path("/storage/zkarwowska/microbiome-interactions/"
                  "datasets/processed/ready_datasets_transformed/common")
-# MAIN_PATH = Path(__file__).parent / "results" / "baseline_scalers"
 MAIN_PATH = Path(__file__).parent / "results" / "baseline_bias_reg"
 
 DATASETS = ['donorA', 'donorB', 'male', 'female']

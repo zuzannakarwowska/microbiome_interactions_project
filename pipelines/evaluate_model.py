@@ -69,7 +69,7 @@ def main():
     # Load data
     
     if mname != 'naive':
-        model = keras.models.load_model(INPUT_PATH / f'model.h5')
+        model = keras.models.load_model(INPUT_PATH / 'model')
     else:
         model = pickle.load(open(INPUT_PATH / 'model.pkl', 'rb'))
     
@@ -118,8 +118,9 @@ def main():
                                             STEPS_IN, STEPS_OUT)
 
         test_X, test_y, _, _ = split_reframed(test_reframed, 
-                                            len(test_dataset.columns), 
-                                            1, STEPS_IN, shuffle=False)
+                                             len(test_dataset.columns), 
+                                             1, STEPS_IN, overlap=True,
+                                             shuffle=False)
 
         if itype == 'supervised':
             test_X, _ = prepare_supervised_data(test_X)

@@ -17,12 +17,12 @@ from utils.transformers import (CLRTransformer, Log1pMinMaxScaler,
 from utils.train_test import (series_to_supervised, split_reframed,
                               prepare_sequential_data, 
                               prepare_supervised_data)
-from models.baseline import (naive_predictor, sequential_mlp, 
-                             supervised_mlp)
+from models.baseline import (naive_predictor, SupervisedMLP, 
+                             SequentialMLP)
 from pipelines.baseline_config import (STEPS_IN, STEPS_OUT, TRAIN_TEST_SPLIT,
-                                       EPOCHS, BATCH_SIZE, TRAIN_SHUFFLE,
-                                       FIT_SHUFFLE, DATA_PATH, MAIN_PATH,
-                                       _dict_to_str)
+                                       EPOCHS, BATCH_SIZE, TRAIN_OVERLAP, 
+                                       TRAIN_SHUFFLE, FIT_SHUFFLE, DATA_PATH, 
+                                       MAIN_PATH, _dict_to_str)
 
 
 def parse_args():
@@ -84,6 +84,7 @@ def main():
                                                       len(dataset.columns), 
                                                       TRAIN_TEST_SPLIT, 
                                                       STEPS_IN,
+                                                      overlap=TRAIN_OVERLAP,
                                                       shuffle=TRAIN_SHUFFLE)
     print(f"\nDataset shape: {dataset.shape}")
     print(f"Reframed shape: {reframed.shape}")
@@ -119,11 +120,12 @@ def main():
     pred_activation = 'linear' if dataset.min().min() < 0 else 'relu'   
     
     if mname == 'mlp' and itype == 'supervised':
-        model = supervised_mlp(in_steps, in_features, 
+        model = SupervisedMLP(in_steps, in_features, 
                                out_features, pred_activation=pred_activation,
                                **kwargs)    
+        model.compile(optimizer='adam', loss='mae')
     elif mname == 'mlp' and itype == 'sequential':
-        model = sequential_mlp(in_steps, in_features, 
+        model = SequentialMLP(in_steps, in_features, 
                                out_features, pred_activation=pred_activation,
                                **kwargs)
     elif mname == 'naive' and itype == 'supervised':
@@ -135,6 +137,8 @@ def main():
     
     if mname != 'naive':
 
+        model.compile(optimizer='adam', loss='mae')
+        
         # Fit model
 
         history = model.fit(train_X, train_y, epochs=EPOCHS, 
@@ -155,7 +159,7 @@ def main():
 
         # Save model
 
-        model.save(OUT_PATH / f'model.h5')
+        model.save(OUT_PATH / 'model', save_format='tf')
     else:
         with open(OUT_PATH / 'model.pkl', 'wb') as f:
             pickle.dump(model, f)
@@ -181,6 +185,7 @@ def main():
         'train/validation split': TRAIN_TEST_SPLIT,
         'epochs': EPOCHS,
         'batch size': BATCH_SIZE,
+        'train overlap': TRAIN_OVERLAP,
         'train shuffle': TRAIN_SHUFFLE,
         'fit shuffle': FIT_SHUFFLE,
         **kwargs
