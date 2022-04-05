@@ -21,7 +21,8 @@ from models.baseline import (naive_predictor, sequential_mlp,
                              supervised_mlp)
 from pipelines.baseline_config import (STEPS_IN, STEPS_OUT, TRAIN_TEST_SPLIT,
                                        EPOCHS, BATCH_SIZE, TRAIN_SHUFFLE,
-                                       FIT_SHUFFLE, DATA_PATH, MAIN_PATH)
+                                       FIT_SHUFFLE, DATA_PATH, MAIN_PATH,
+                                       _dict_to_str)
 
 
 def parse_args():
@@ -36,6 +37,8 @@ def parse_args():
                         help="Scaler name e.g. 'minmax', 'clr_0_False'")
     parser.add_argument("-d", "--dataset_name", required=True, 
                         help="Dataset name e.g. 'donorA', 'male'")
+    parser.add_argument("-k", "--kwargs", required=True, type=json.loads,
+                        help="Dictionary of additional named arguments.'")
     return parser.parse_args()
 
 
@@ -47,12 +50,14 @@ def main():
     itype = args.model_input
     sname = args.scaler_name
     dname = args.dataset_name
+    kwargs = args.kwargs
+       
+    print(f"Training model for: {mname}, {itype}, {sname}, {dname}, {kwargs}")
 
-    print(f"Training model for: {mname}, {itype}, {sname}, {dname}")
-
-    OUT_PATH = MAIN_PATH / f"{mname}_{itype}_{sname}_{dname}"
+    OUT_PATH = MAIN_PATH /\
+    f"{mname}_{itype}_{sname}_{dname}_{_dict_to_str(kwargs)}"
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    
+
     # Load data
 
     dataset = pd.read_csv(DATA_PATH / f"{dname}_{sname}.csv", index_col=0)
@@ -115,14 +120,16 @@ def main():
     
     if mname == 'mlp' and itype == 'supervised':
         model = supervised_mlp(in_steps, in_features, 
-                               out_features, pred_activation=pred_activation)    
+                               out_features, pred_activation=pred_activation,
+                               **kwargs)    
     elif mname == 'mlp' and itype == 'sequential':
         model = sequential_mlp(in_steps, in_features, 
-                               out_features, pred_activation=pred_activation)
+                               out_features, pred_activation=pred_activation,
+                               **kwargs)
     elif mname == 'naive' and itype == 'supervised':
-        model = naive_predictor('sup', STEPS_IN, STEPS_OUT) 
+        model = naive_predictor('sup', in_features, STEPS_IN, STEPS_OUT) 
     elif mname == 'naive' and itype == 'sequential':
-        model = naive_predictor('seq', STEPS_IN, STEPS_OUT) 
+        model = naive_predictor('seq', in_features, STEPS_IN, STEPS_OUT) 
     else:
         raise NotImplementedError
     
@@ -176,6 +183,7 @@ def main():
         'batch size': BATCH_SIZE,
         'train shuffle': TRAIN_SHUFFLE,
         'fit shuffle': FIT_SHUFFLE,
+        **kwargs
     }
     
     json.dump(model_config, open(OUT_PATH / 'model_config.json', 'w'))

@@ -17,7 +17,8 @@ from utils.train_test import (series_to_supervised, split_reframed,
                               prepare_sequential_data, 
                               prepare_supervised_data)
 from utils.evaluate import calculate_measures
-from pipelines.baseline_config import DATA_PATH, MAIN_PATH, DATASETS
+from pipelines.baseline_config import (DATA_PATH, MAIN_PATH, DATASETS,
+                                       _dict_to_str)
 
 
 def parse_args():
@@ -32,6 +33,8 @@ def parse_args():
                         help="Scaler name e.g. 'minmax', 'clr_0_False'")
     parser.add_argument("-d", "--dataset_name", required=True, 
                         help="Dataset name e.g. 'donorA', 'male'")
+    parser.add_argument("-k", "--kwargs", required=True, type=json.loads,
+                        help="Dictionary of additional named arguments.'")
     return parser.parse_args()
 
 
@@ -43,10 +46,13 @@ def main():
     itype = args.model_input
     sname = args.scaler_name
     dname = args.dataset_name
+    kwargs = args.kwargs
 
-    print(f"\nRunning evaluation for: {mname}, {itype}, {sname}, {dname}\n")
+    print(f"\nRunning evaluation for: {mname}, {itype}, {sname}, {dname}, "\
+          f"{kwargs}\n")
     
-    INPUT_PATH = MAIN_PATH / f"{mname}_{itype}_{sname}_{dname}"
+    INPUT_PATH = MAIN_PATH /\
+    f"{mname}_{itype}_{sname}_{dname}_{_dict_to_str(kwargs)}"
     OUT_PATH = INPUT_PATH / "scores"
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
