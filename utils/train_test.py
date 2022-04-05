@@ -42,7 +42,7 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
 
 
 def split_reframed(reframed, cols, train_test_split=0.8, 
-                   no_of_timesteps=1, shuffle=True):
+                   in_steps=1, overlap=True, shuffle=True):
     """
     Split data into train/validation sets.
    
@@ -50,32 +50,41 @@ def split_reframed(reframed, cols, train_test_split=0.8,
    `cols` - number of features in the dataset.
    
     First, the data is reshaped into samples where each
-    sample contains `no_of_timesteps` time points for
-    trainining/validation.
+    sample contains `in_steps` time points for
+    trainining/validation. If `overlap=True`, each slice of data 
+    is shifted by one row with respect to the subsequent one, which
+    is important only for `in_steps>1`.
     
     Second, the data is shuffled, but if `shuffle=False`,
     then the test samples are taken from the end of the dataset.
     
     Finally, the data is split into train/test parts.
-    
-    # TODO: consider an overlap between samples !!!!
     """
-    # We need to skip last rows in order to perform reshaping
-    values_to_throw = len(reframed) % no_of_timesteps
-    values = reframed.values
-    if values_to_throw:
-        values = values[:-values_to_throw]
-    # 1) Reshape data
-    # Only the first dimension will be shuffled (below)
-    values_reshaped = values.reshape(-1, no_of_timesteps, reframed.shape[1])
+    # number of slices
+    if overlap:
+        slices = in_steps
+    else:
+        slices = 1
+    values_reshaped = []
+    for i in range(slices):
+        # shift the data by one row
+        values = reframed[i:].values.copy()
+        # We need to skip last rows in order to perform reshaping
+        skipped = (len(values) % in_steps)
+        if skipped:
+            values = values[:-skipped]
+        # 1) Reshape data
+        # Only the first dimension will be shuffled (below)
+        values_reshaped.append(values.reshape(-1, in_steps, reframed.shape[1]))
+    values_reshaped = np.vstack(values_reshaped)
     # 2) Shuffle data
     # Note 1: original input dataframe will be shuffled as well !!!!
     # Note 2: it concerns only the first dimension (i.e. groups of 
-    #`no_of_timesteps x cols` elements)
+    #`in_steps x cols` elements)
     if shuffle:
         np.random.shuffle(values_reshaped)
     # 3) Split data
-    all_features = cols * no_of_timesteps
+    all_features = cols * in_steps
     train_last_id = int(values_reshaped.shape[0] * train_test_split)
     train_X, train_y = values_reshaped[:train_last_id, :, :all_features], \
     values_reshaped[:train_last_id, :, all_features:]
@@ -84,14 +93,12 @@ def split_reframed(reframed, cols, train_test_split=0.8,
     # Use only first time step for y
     train_y = train_y[:, 0, :] 
     test_y = test_y[:, 0, :]
-    # Use only the first set of columns (t - no_of_timesteps) for X
+    # Use only the first set of columns (t - in_steps) for X
     # (using everything would introduce redundancy)
     train_X = train_X[:, :, :cols] 
     test_X = test_X[:, :, :cols]
-    print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
     # Check if all dimensions agree
-    assert len(reframed) == (train_X.shape[0] + test_X.shape[0]) * \
-    no_of_timesteps + values_to_throw    
+    assert len(values_reshaped) == (train_X.shape[0] + test_X.shape[0]) 
     return train_X, train_y, test_X, test_y
 
 
@@ -114,11 +121,11 @@ def prepare_supervised_data(train_X, test_X=None, order='C'):
     Reshape sequential data into supervised features.
     Use it if your model requires one vector-like input.
     
-    If order='C', put features one after another:
-    e.g. var1(t-2), var1(t-1), var2(t-2), var1(t-1)
-    
-    If order='F', put time steps one after another:
+    If order='C', put time steps one after another:
     e.g. var1(t-2), var2(t-2), var1(t-1), var2(t-1)
+    
+    If order='F', put features one after another:
+    e.g. var1(t-2), var1(t-1), var2(t-2), var1(t-1)
     """
     if len(train_X.shape) == 3:
         train_X_reshaped = train_X.reshape((train_X.shape[0], -1), 
