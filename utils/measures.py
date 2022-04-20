@@ -38,7 +38,7 @@ def calculate_f1score(true, pred, model=None, axis=0,
 
     Return
     ------
-    - vector or scalar (vector's mean)
+    - vector or tuple (vector's mean, vector's standard deviation)
     """
     check_inputs(true, pred)
     true_m = continuous_to_multiclass(true.copy())
@@ -117,7 +117,7 @@ def inter_dissimilarity(true, pred, model=None, return_tuple=False):
 
     Return
     ------
-    - vector or scalar (vector's mean)
+    - vector or tuple (vector's mean, vector's standard deviation)
     """
     check_inputs(true, pred)
     res = true.T.combine(pred.T, braycurtis).iloc[0]

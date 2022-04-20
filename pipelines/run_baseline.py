@@ -27,7 +27,8 @@ from pipelines.baseline_config import (MAIN_PATH, DATASETS, SCALERS,
                                        KWARGS_SUP, KWARGS_SEQ, _dict_to_str)
 
 
-MODELS = ['mlp', 'naive']
+# MODELS = ['mlp', 'naive']
+MODELS = ['mlp_diff', 'naive']
 INPUT_TYPES = ['supervised', 'sequential']
     
     
@@ -49,7 +50,7 @@ if __name__ == '__main__':
                 for dataset in DATASETS:
                     for kwargs in kwargs_list:
                         name = f"{model}_{input_type}_{scaler}"\
-                        f"_{dataset}_{_dict_to_str(kwargs)}"
+                        f"_{dataset}{_dict_to_str(kwargs)}"
                         print(f"Processing: {name}")
         
                         # Training

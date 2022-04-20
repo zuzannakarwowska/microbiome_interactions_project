@@ -52,7 +52,7 @@ def main():
           f"{kwargs}\n")
     
     INPUT_PATH = MAIN_PATH /\
-    f"{mname}_{itype}_{sname}_{dname}_{_dict_to_str(kwargs)}"
+    f"{mname}_{itype}_{sname}_{dname}{_dict_to_str(kwargs)}"
     OUT_PATH = INPUT_PATH / "scores"
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 

@@ -19,6 +19,7 @@ from utils.train_test import (series_to_supervised, split_reframed,
                               prepare_supervised_data)
 from models.baseline import (naive_predictor, SupervisedMLP, 
                              SequentialMLP)
+from models.baseline_with_diff import SupervisedDiffMLP, SequentialDiffMLP
 from pipelines.baseline_config import (STEPS_IN, STEPS_OUT, TRAIN_TEST_SPLIT,
                                        EPOCHS, BATCH_SIZE, TRAIN_OVERLAP, 
                                        TRAIN_SHUFFLE, FIT_SHUFFLE, DATA_PATH, 
@@ -55,7 +56,7 @@ def main():
     print(f"Training model for: {mname}, {itype}, {sname}, {dname}, {kwargs}")
 
     OUT_PATH = MAIN_PATH /\
-    f"{mname}_{itype}_{sname}_{dname}_{_dict_to_str(kwargs)}"
+    f"{mname}_{itype}_{sname}_{dname}{_dict_to_str(kwargs)}"
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     # Load data
@@ -126,6 +127,15 @@ def main():
         model.compile(optimizer='adam', loss='mae')
     elif mname == 'mlp' and itype == 'sequential':
         model = SequentialMLP(in_steps, in_features, 
+                               out_features, pred_activation=pred_activation,
+                               **kwargs)
+    elif mname == 'mlp_diff' and itype == 'supervised':
+        model = SupervisedDiffMLP(in_steps, in_features, 
+                               out_features, pred_activation=pred_activation,
+                               **kwargs)    
+        model.compile(optimizer='adam', loss='mae')
+    elif mname == 'mlp_diff' and itype == 'sequential':
+        model = SequentialDiffMLP(in_steps, in_features, 
                                out_features, pred_activation=pred_activation,
                                **kwargs)
     elif mname == 'naive' and itype == 'supervised':
