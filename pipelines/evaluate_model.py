@@ -67,7 +67,7 @@ def main():
         sparams = {}
         
     # Load data
-    
+   
     if mname != 'naive':
         model = keras.models.load_model(INPUT_PATH / 'model')
     else:
@@ -97,13 +97,23 @@ def main():
     val_inv_y = scaler.inverse_transform(data['val_y'], **sparams)
     train_inv_yhat = scaler.inverse_transform(train_yhat, **sparams)
     val_inv_yhat = scaler.inverse_transform(val_yhat, **sparams)
-    # Compute and save scores
+    # Compute and save scores:
+    # - scalars
     scores_train = calculate_measures(train_inv_y, train_inv_yhat)
     scores_val = calculate_measures(val_inv_y, val_inv_yhat)
     json.dump(scores_train, open(OUT_PATH / f'{dname}_train.json', 'w'))
     json.dump(scores_val, open(OUT_PATH / f'{dname}_val.json', 'w'))
     print(f"{dname} (train)", scores_train, '\n')
     print(f"{dname} (val)", scores_val, '\n')
+    # - vectors
+    scores_train = calculate_measures(train_inv_y, train_inv_yhat, 
+                                      return_tuple=False)
+    scores_val = calculate_measures(val_inv_y, val_inv_yhat, 
+                                      return_tuple=False)
+    for k, v in scores_train.items():
+        v.to_csv(open(OUT_PATH / f'{dname}_train_{k}.csv', 'w'))
+    for k, v in scores_val.items():
+        v.to_csv(open(OUT_PATH / f'{dname}_val_{k}.csv', 'w'))
         
     # Test datasets
 
@@ -136,12 +146,18 @@ def main():
         # Inverse data
         test_inv_y = scaler.inverse_transform(test_y, **sparams)
         test_inv_yhat= scaler.inverse_transform(test_yhat, **sparams)
-        # Compute and save scores
-        scores_test = calculate_measures(test_inv_y, test_inv_yhat)
-        json.dump(scores_test, open(OUT_PATH / f'{test_dname}.json', 'w'))
         
+        # Compute and save scores
+        # - scalars
+        scores_test = calculate_measures(test_inv_y, test_inv_yhat)
+        json.dump(scores_test, open(OUT_PATH / f'{test_dname}.json', 'w'))        
         print(test_dname, scores_test, '\n')
-
+        # - vectors
+        scores_test = calculate_measures(test_inv_y, test_inv_yhat,
+                                         return_tuple=False)
+        for k, v in scores_test.items():
+            v.to_csv(open(OUT_PATH / f'{test_dname}_{k}.csv', 'w'))
+        
         
 if __name__ == '__main__':
     main()
