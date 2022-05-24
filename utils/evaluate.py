@@ -8,18 +8,22 @@ from utils.measures import (calculate_f1score, calculate_spearman,
                             intra_dissimilarity)
 
 
-def calculate_measures(true, pred):
+def calculate_measures(true, pred, return_tuple=True):
     true = pd.DataFrame(true)
     pred = pd.DataFrame(pred)
     names = ["f1score", "spearman", "nrmse", "inter", "intra"]
-    f1score = calculate_f1score(true, pred, return_tuple=True)
-    spearman = calculate_spearman(true, pred, return_tuple=True)
-    nrmse = calculate_nrmse(true, pred, return_tuple=True)
-    inter = inter_dissimilarity(true, pred, return_tuple=True)
-    _, _, _, _, intra = intra_dissimilarity(true, pred)
-    return dict(zip(names, (f1score, spearman, nrmse, inter, intra)))
+    f1score = calculate_f1score(true, pred, return_tuple=return_tuple)
+    spearman = calculate_spearman(true, pred, return_tuple=return_tuple)
+    nrmse = calculate_nrmse(true, pred, return_tuple=return_tuple)
+    inter = inter_dissimilarity(true, pred, return_tuple=return_tuple)
+    if return_tuple:
+        _, _, _, _, intra = intra_dissimilarity(true, pred)
+        return dict(zip(names, (f1score, spearman, nrmse, inter, intra)))
+    else:
+        # return only vectors (i.e. do not return intra which is a scalar)
+        return dict(zip(names, (f1score, spearman, nrmse, inter)))
 
-
+    
 def plot_series(train_true, train_pred, train_naive, 
                 test_true, test_pred, test_naive, group):
     if train_true is not None and train_pred is not None:

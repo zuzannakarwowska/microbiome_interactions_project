@@ -52,7 +52,7 @@ def main():
           f"{kwargs}\n")
     
     INPUT_PATH = MAIN_PATH /\
-    f"{mname}_{itype}_{sname}_{dname}_{_dict_to_str(kwargs)}"
+    f"{mname}_{itype}_{sname}_{dname}{_dict_to_str(kwargs)}"
     OUT_PATH = INPUT_PATH / "scores"
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -67,9 +67,9 @@ def main():
         sparams = {}
         
     # Load data
-    
+   
     if mname != 'naive':
-        model = keras.models.load_model(INPUT_PATH / f'model.h5')
+        model = keras.models.load_model(INPUT_PATH / 'model')
     else:
         model = pickle.load(open(INPUT_PATH / 'model.pkl', 'rb'))
     
@@ -92,21 +92,39 @@ def main():
     else:
         train_yhat = model.predict(data['train_X'])
         val_yhat = model.predict(data['val_X'])
+        
     # Inverse data
     train_inv_y = scaler.inverse_transform(data['train_y'], **sparams)
     val_inv_y = scaler.inverse_transform(data['val_y'], **sparams)
     train_inv_yhat = scaler.inverse_transform(train_yhat, **sparams)
     val_inv_yhat = scaler.inverse_transform(val_yhat, **sparams)
-    # Compute and save scores
+    
+    # Save raw predictions
+    data = {'train_inv_y': train_inv_y, 'train_inv_yhat': train_inv_yhat,
+            'val_inv_y': val_inv_y, 'val_inv_yhat': val_inv_yhat}
+    np.savez(INPUT_PATH / f'train_val_predictions', **data)
+    
+    # Compute and save scores:
+    # - scalars
     scores_train = calculate_measures(train_inv_y, train_inv_yhat)
     scores_val = calculate_measures(val_inv_y, val_inv_yhat)
     json.dump(scores_train, open(OUT_PATH / f'{dname}_train.json', 'w'))
     json.dump(scores_val, open(OUT_PATH / f'{dname}_val.json', 'w'))
     print(f"{dname} (train)", scores_train, '\n')
     print(f"{dname} (val)", scores_val, '\n')
+    # - vectors
+    scores_train = calculate_measures(train_inv_y, train_inv_yhat, 
+                                      return_tuple=False)
+    scores_val = calculate_measures(val_inv_y, val_inv_yhat, 
+                                      return_tuple=False)
+    for k, v in scores_train.items():
+        v.to_csv(open(OUT_PATH / f'{dname}_train_{k}.csv', 'w'))
+    for k, v in scores_val.items():
+        v.to_csv(open(OUT_PATH / f'{dname}_val_{k}.csv', 'w'))
         
     # Test datasets
 
+    test_predictions = {}
     for test_dname in DATASETS:
         test_dataset_original = pd.read_csv(DATA_PATH / f"{test_dname}.csv", 
                                            index_col=0)
@@ -118,8 +136,9 @@ def main():
                                             STEPS_IN, STEPS_OUT)
 
         test_X, test_y, _, _ = split_reframed(test_reframed, 
-                                            len(test_dataset.columns), 
-                                            1, STEPS_IN, shuffle=False)
+                                             len(test_dataset.columns), 
+                                             1, STEPS_IN, overlap=True,
+                                             shuffle=False)
 
         if itype == 'supervised':
             test_X, _ = prepare_supervised_data(test_X)
@@ -132,15 +151,27 @@ def main():
 
         # Make prediction
         test_yhat = model.predict(test_X)
+
         # Inverse data
         test_inv_y = scaler.inverse_transform(test_y, **sparams)
-        test_inv_yhat= scaler.inverse_transform(test_yhat, **sparams)
-        # Compute and save scores
+        test_inv_yhat = scaler.inverse_transform(test_yhat, **sparams)
+        test_predictions[f"{test_dname}_test_inv_y"] = test_inv_y
+        test_predictions[f"{test_dname}_test_inv_yhat"] = test_inv_yhat
+    
+        # # Compute and save scores
+        # # - scalars
         scores_test = calculate_measures(test_inv_y, test_inv_yhat)
-        json.dump(scores_test, open(OUT_PATH / f'{test_dname}.json', 'w'))
-        
+        json.dump(scores_test, open(OUT_PATH / f'{test_dname}.json', 'w'))        
         print(test_dname, scores_test, '\n')
-
+        # - vectors
+        scores_test = calculate_measures(test_inv_y, test_inv_yhat,
+                                         return_tuple=False)
+        for k, v in scores_test.items():
+            v.to_csv(open(OUT_PATH / f'{test_dname}_{k}.csv', 'w'))
+        
+    # Save raw test predictions
+    np.savez(INPUT_PATH / f'test_predictions', **test_predictions)
+        
         
 if __name__ == '__main__':
     main()

@@ -27,8 +27,8 @@ from pipelines.baseline_config import (MAIN_PATH, DATASETS, SCALERS,
                                        KWARGS_SUP, KWARGS_SEQ, _dict_to_str)
 
 
-MODELS = ['naive']#, 'mlp']
-INPUT_TYPES = ['supervised', 'sequential']
+MODELS = ['mlp_diff', 'naive']
+INPUT_TYPES = ['sequential']
     
     
 if __name__ == '__main__':
@@ -49,18 +49,18 @@ if __name__ == '__main__':
                 for dataset in DATASETS:
                     for kwargs in kwargs_list:
                         name = f"{model}_{input_type}_{scaler}"\
-                        f"_{dataset}_{_dict_to_str(kwargs)}"
+                        f"_{dataset}{_dict_to_str(kwargs)}"
                         print(f"Processing: {name}")
         
                         # Training
-                        f_out = open(LOG_PATH / f"{name}.log", "w")
-                        f_err = open(LOG_PATH / f"{name}.err", "w")
-                        subprocess.call(["python", 
-                                         "pipelines/train_model.py",
-                                         "-m", model, "-i", input_type, 
-                                         "-s", scaler, "-d", dataset,
-                                         "-k", json.dumps(kwargs)], 
-                                        stdout=f_out, stderr=f_err)
+                        # f_out = open(LOG_PATH / f"{name}.log", "w")
+                        # f_err = open(LOG_PATH / f"{name}.err", "w")
+                        # subprocess.call(["python", 
+                        #                  "pipelines/train_model.py",
+                        #                  "-m", model, "-i", input_type, 
+                        #                  "-s", scaler, "-d", dataset,
+                        #                  "-k", json.dumps(kwargs)], 
+                        #                 stdout=f_out, stderr=f_err)
 
                         # Evaluation
                         f_out = open(LOG_PATH / f"{name}.log", "a")
