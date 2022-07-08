@@ -5,6 +5,10 @@ import numpy.ma as ma
 from scipy.stats import gmean
 from sklearn.preprocessing import MinMaxScaler
     
+    
+#=========
+# Helpers
+#=========
 
 def _transform_type(X):
     if type(X) is not pd.DataFrame:
@@ -12,6 +16,28 @@ def _transform_type(X):
     else:
         return X
 
+    
+def inverse_through_timesteps_wrapper(scaler, dataset, predictions, sparams):
+    """
+    Use this wrapper if your scaler inverse transform is performed
+    on timesteps e.g. clr-1.
+    """
+    # Merge all predictions into one dataframe
+    y = pd.concat([pd.DataFrame(**d) for d in predictions])
+    # Adjust index (timesteps) to match the dataset index
+    y = y.sort_index().reindex(dataset.index)
+    # Inverse transform
+    inv_y = scaler.inverse_transform(y, **sparams)
+    # Return inverted predictions
+    inv_y_sets = []
+    for d in predictions:
+        inv_y_sets.append(inv_y.loc[d['index']])
+    return inv_y_sets        
+
+
+#==============
+# Transformers
+#==============
 
 class RCLRTransformer:
     """Transform features using Robust Centered Log-Ratio 
@@ -223,6 +249,7 @@ class Log1pMinMaxScaler:
         X = np.exp(X) - 1
         return X
 
+    
 class IdentityScaler:
     """Does nothing with the input data.
 
@@ -247,6 +274,10 @@ class IdentityScaler:
     def inverse_transform(self, X):
         return X
     
+    
+#=======
+# Tests
+#=======
     
 def _test_RCLRTransformer():
     # TODO create unit test
