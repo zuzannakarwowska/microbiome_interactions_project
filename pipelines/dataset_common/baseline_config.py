@@ -9,15 +9,15 @@ TRAIN_OVERLAP = True
 TRAIN_SHUFFLE = True
 FIT_SHUFFLE = True
 
+# Common part of species between all datasets is considered
 DATA_PATH = Path("/storage/zkarwowska/microbiome-interactions/"
                  "datasets/processed/ready_datasets_transformed/common")
 MAIN_PATH = Path(__file__).parent / "results" / "baseline_diff_bias_reg"
 
 DATASETS = ['donorA', 'donorB', 'male', 'female']
-# SCALERS = ['id', 'std', 'minmax', 'quantile10', 'quantile50', 'quantile100', 
-#            'quantile150', 'clr_0_False', 'clr_0_True', 'clr_None_False', 
-#            'clr_None_True', 'log1pminmax']
-SCALERS = ['id', 'std', 'clr_0_True']
+SCALERS = ['id', 'std', 'minmax', 'quantile10', 'quantile50', 'quantile100', 
+           'quantile150', 'clr_0_False', 'clr_0_True', 'clr_None_False', 
+           'clr_None_True', 'log1pminmax']
 
 # Additional model's named arguments
 KWARGS_SUP = [

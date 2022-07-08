@@ -10,20 +10,18 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # TODO: solve later using setup.py
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from utils.transformers import (CLRTransformer, Log1pMinMaxScaler, 
-                                IdentityScaler)
 from utils.train_test import (series_to_supervised, split_reframed,
                               prepare_sequential_data, 
                               prepare_supervised_data)
 from models.baseline import (naive_predictor, SupervisedMLP, 
                              SequentialMLP)
 from models.baseline_with_diff import SupervisedDiffMLP, SequentialDiffMLP
-from pipelines.baseline_config import (STEPS_IN, STEPS_OUT, TRAIN_TEST_SPLIT,
-                                       EPOCHS, BATCH_SIZE, TRAIN_OVERLAP, 
-                                       TRAIN_SHUFFLE, FIT_SHUFFLE, DATA_PATH, 
-                                       MAIN_PATH, _dict_to_str)
+from pipelines.dataset_common.baseline_config import (STEPS_IN, STEPS_OUT, 
+                                       RAIN_TEST_SPLIT, EPOCHS, BATCH_SIZE, 
+                                       TRAIN_OVERLAP, TRAIN_SHUFFLE, FIT_SHUFFLE, 
+                                       DATA_PATH, MAIN_PATH, _dict_to_str)
 
 
 def parse_args():

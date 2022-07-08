@@ -8,9 +8,9 @@ Second, evaluate models and save results.
 The output might be further processed with visualization tools.
 
 Run the script (from the main repo directory) e.g. as:
-    nohup python pipelines/run_baseline.py \
-    > pipelines/results/baseline.log \
-    2> pipelines/results/baseline.err
+    nohup python pipelines/dataset_common/run_baseline.py \
+    > pipelines/dataset_common/results/baseline.log \
+    2> pipelines/dataset_common/results/baseline.err
 """
 
 
@@ -21,14 +21,15 @@ import json
 from pathlib import Path
 
 # TODO: solve later using setup.py
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from pipelines.baseline_config import (MAIN_PATH, DATASETS, SCALERS,
-                                       KWARGS_SUP, KWARGS_SEQ, _dict_to_str)
+from pipelines.dataset_common.baseline_config import (MAIN_PATH, DATASETS, 
+                                                      SCALERS, KWARGS_SUP, 
+                                                      KWARGS_SEQ, _dict_to_str)
 
 
-MODELS = ['mlp_diff', 'naive']
-INPUT_TYPES = ['sequential']
+MODELS = ['mlp', 'mlp_diff', 'naive']
+INPUT_TYPES = ['supervised', 'sequential']
     
     
 if __name__ == '__main__':
@@ -53,20 +54,22 @@ if __name__ == '__main__':
                         print(f"Processing: {name}")
         
                         # Training
-                        # f_out = open(LOG_PATH / f"{name}.log", "w")
-                        # f_err = open(LOG_PATH / f"{name}.err", "w")
-                        # subprocess.call(["python", 
-                        #                  "pipelines/train_model.py",
-                        #                  "-m", model, "-i", input_type, 
-                        #                  "-s", scaler, "-d", dataset,
-                        #                  "-k", json.dumps(kwargs)], 
-                        #                 stdout=f_out, stderr=f_err)
+                        f_out = open(LOG_PATH / f"{name}.log", "w")
+                        f_err = open(LOG_PATH / f"{name}.err", "w")
+                        subprocess.call(["python", 
+                                             "pipelines/dataset_common/"\
+                                             "train_model.py",
+                                         "-m", model, "-i", input_type, 
+                                         "-s", scaler, "-d", dataset,
+                                         "-k", json.dumps(kwargs)], 
+                                        stdout=f_out, stderr=f_err)
 
                         # Evaluation
                         f_out = open(LOG_PATH / f"{name}.log", "a")
                         f_err = open(LOG_PATH / f"{name}.err", "a")
                         subprocess.call(["python", 
-                                         "pipelines/evaluate_model.py",
+                                             "pipelines/dataset_common/"\
+                                             "evaluate_model.py",
                                          "-m", model, "-i", input_type, 
                                          "-s", scaler, "-d", dataset, 
                                          "-k", json.dumps(kwargs)], 
