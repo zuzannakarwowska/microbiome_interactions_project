@@ -89,13 +89,7 @@ def calculate_pearson(true, pred, model=None, return_tuple=False):
     ------
     - vector or tuple (non-nan vector's abs mean, number of nans)
     """
-    assert true.shape == pred.shape
-    if type(true) is not pd.DataFrame:
-        true = pd.DataFrame(true)
-    if type(pred) is not pd.DataFrame:
-        pred = pd.DataFrame(pred)
-    pred.index = true.index
-
+    check_inputs(true, pred)
     coeffs = []
     with warnings.catch_warnings():
         # Supress SpearmanRConstantInputWarning
