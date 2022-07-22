@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import warnings
 
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, pearsonr
 from scipy.spatial import procrustes
 from scipy.spatial.distance import braycurtis
 from scipy.spatial.distance import pdist, squareform
@@ -69,6 +69,40 @@ def calculate_spearman(true, pred, model=None, return_tuple=False):
         warnings.simplefilter("ignore")
         for col in true.columns:
             rho, _ = spearmanr(true[col], pred[col])
+            coeffs.append(rho)
+    if return_tuple:
+        # Returns tuple: (non-nan abs mean, non-nan abs std, 
+        #                number of nans)
+        return (np.nanmean(np.abs(coeffs)), 
+                np.nanstd(np.abs(coeffs)), 
+                np.count_nonzero(np.isnan(coeffs)))
+    else:
+        df = pd.DataFrame(coeffs, columns=[model], index=true.columns)
+        return df
+    
+
+def calculate_pearson(true, pred, model=None, return_tuple=False):
+    """Calculate a Pearson correlation coefficient
+    across columns between true and pred dataframes.
+
+    Return
+    ------
+    - vector or tuple (non-nan vector's abs mean, number of nans)
+    """
+    assert true.shape == pred.shape
+    if type(true) is not pd.DataFrame:
+        true = pd.DataFrame(true)
+    if type(pred) is not pd.DataFrame:
+        pred = pd.DataFrame(pred)
+    pred.index = true.index
+
+    coeffs = []
+    with warnings.catch_warnings():
+        # Supress SpearmanRConstantInputWarning
+        # (number of NaNs is returned anyway)
+        warnings.simplefilter("ignore")
+        for col in true.columns:
+            rho, _ = pearsonr(true[col], pred[col])
             coeffs.append(rho)
     if return_tuple:
         # Returns tuple: (non-nan abs mean, non-nan abs std, 
