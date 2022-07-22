@@ -106,7 +106,6 @@ def calculate_nrmse(true, pred, model=None, return_tuple=False,
             coeffs.append(nrmse / divider)
         elif abs(divider) < div_rtol and nrmse >= nrmse_rtol:
             coeffs.append(np.nan)
-            print(nrmse)
         elif abs(divider) < div_rtol and nrmse < nrmse_rtol:
             coeffs.append(0)
     if return_tuple:
