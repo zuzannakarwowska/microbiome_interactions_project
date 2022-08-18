@@ -146,7 +146,7 @@ def prepare_supervised_data(train_X, test_X=None, order='C'):
     e.g. var1(t-2), var2(t-2), var1(t-1), var2(t-1)
     
     If order='F', put features one after another:
-    e.g. var1(t-2), var1(t-1), var2(t-2), var1(t-1)
+    e.g. var1(t-2), var1(t-1), var2(t-2), var2(t-1)
     """
     if len(train_X.shape) == 3:
         train_X_reshaped = train_X.reshape((train_X.shape[0], -1), 
