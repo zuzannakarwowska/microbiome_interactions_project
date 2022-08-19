@@ -19,7 +19,10 @@ class BahdanauAttention(Layer):
                                initializer='random_normal', trainable=True)
         self.b=self.add_weight(name='attention_bias', 
                                shape=(input_shape[1], 1), 
-                               initializer='zeros', trainable=True)        
+                               initializer='zeros', trainable=True)      
+        self.v=self.add_weight(name='v_vector', 
+                               shape=(1, input_shape[1]), 
+                               initializer='random_normal', trainable=True)    
         super(BahdanauAttention, self).build(input_shape)
  
     def call(self, x):
@@ -32,15 +35,15 @@ class BahdanauAttention(Layer):
             # take last timestep
             x_processed = x[:, :, -1]
         e = K.tanh(K.dot(x_processed, self.W) + self.b)
-        # Remove dimension of size 1
-        e = K.squeeze(e, axis=-1)   
+        # Remove dimension of size 1 and multiply but v vector
+        e = K.squeeze(e, axis=-1) * self.v
         # Compute the weights
         alpha = K.softmax(e)
         # Reshape to tensorFlow format
         # alpha = K.expand_dims(alpha, axis=-1)
         # Compute the context vector
         context = alpha * x_processed
-        return context
+        return context    
 
 
 def supervised_attention_mlp(in_steps, in_features, out_features, 
