@@ -30,7 +30,7 @@ from pipelines.dataset_specific.baseline_config import (MAIN_PATH, DATASETS,
                                                         _dict_to_str)
 
 
-MODELS = ['mlp-diff']
+MODELS = ['mlp']#, 'mlp-diff']
 INPUT_TYPES = ['supervised', 'sequential']
     
     
@@ -58,16 +58,16 @@ if __name__ == '__main__':
                             print(f"Processing: {name}")
 
                             # Training
-                            # f_out = open(LOG_PATH / f"{name}.log", "w")
-                            # f_err = open(LOG_PATH / f"{name}.err", "w")
-                            # subprocess.call(["python", 
-                            #                  "pipelines/dataset_specific/"\
-                            #                  "train_model.py",
-                            #                  "-m", model, "-i", input_type, 
-                            #                  "-s", scaler, "-d", dataset,
-                            #                  "-t", json.dumps(train_val_params), 
-                            #                  "-k", json.dumps(kwargs)], 
-                            #                 stdout=f_out, stderr=f_err)
+                            f_out = open(LOG_PATH / f"{name}.log", "w")
+                            f_err = open(LOG_PATH / f"{name}.err", "w")
+                            subprocess.call(["python", 
+                                             "pipelines/dataset_specific/"\
+                                             "train_model.py",
+                                             "-m", model, "-i", input_type, 
+                                             "-s", scaler, "-d", dataset,
+                                             "-t", json.dumps(train_val_params), 
+                                             "-k", json.dumps(kwargs)], 
+                                            stdout=f_out, stderr=f_err)
 
                             # # Evaluation
                             f_out = open(LOG_PATH / f"{name}.log", "a")

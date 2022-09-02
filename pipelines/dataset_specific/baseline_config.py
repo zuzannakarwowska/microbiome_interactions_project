@@ -1,6 +1,6 @@
 from pathlib import Path
 
-STEPS_IN = 2
+STEPS_IN = 1
 STEPS_OUT = 1
 TRAIN_TEST_SPLIT = 0.8
 EPOCHS = 100
@@ -12,7 +12,7 @@ PREPROCESSING = "filtered-0.9_clr-1-True"
 DATA_PATH = Path("/storage/zkarwowska/microbiome-interactions/"
                  "datasets/processed/ready_datasets_preprocessed")
 # MAIN_PATH = Path(__file__).parent / "results" / "baseline_diff"
-MAIN_PATH = Path(__file__).parent / "results" / "baseline_diff"
+MAIN_PATH = Path(__file__).parent / "results" / "baseline"
 
 DATASETS = ['donorA', 'donorB', 'male', 'female']
 DATASETS = [f"{d}_{PREPROCESSING}" for d in DATASETS]
