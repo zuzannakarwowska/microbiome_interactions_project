@@ -54,8 +54,8 @@ class naive_predictor:
                     return np.squeeze(np.array(X)).T
                 if self.n_in > 1:
                     return np.squeeze(np.array(X)).T[-1]
-            
-            
+
+
 def supervised_mlp(in_steps, in_features, out_features, 
                    pred_activation='relu', use_bias=True,
                    L1=0.0001, L2=0.0001):

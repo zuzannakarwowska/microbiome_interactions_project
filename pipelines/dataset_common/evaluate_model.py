@@ -11,14 +11,14 @@ from pathlib import Path
 from tensorflow import keras
 
 # TODO: solve later using setup.py
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from utils.train_test import (series_to_supervised, split_reframed,
                               prepare_sequential_data, 
                               prepare_supervised_data)
 from utils.evaluate import calculate_measures
-from pipelines.baseline_config import (DATA_PATH, MAIN_PATH, DATASETS,
-                                       _dict_to_str)
+from pipelines.dataset_common.baseline_config import (DATA_PATH, MAIN_PATH, 
+                                                      DATASETS, _dict_to_str)
 
 
 def parse_args():

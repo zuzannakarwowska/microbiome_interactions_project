@@ -9,8 +9,12 @@ from utils.measures import (calculate_f1score, calculate_spearman,
 
 
 def calculate_measures(true, pred, return_tuple=True):
-    true = pd.DataFrame(true)
-    pred = pd.DataFrame(pred)
+    assert true.shape == pred.shape
+    if type(true) is not pd.DataFrame:
+        true = pd.DataFrame(true)
+    if type(pred) is not pd.DataFrame:
+        pred = pd.DataFrame(pred)
+    pred.index = true.index
     names = ["f1score", "spearman", "nrmse", "inter", "intra"]
     f1score = calculate_f1score(true, pred, return_tuple=return_tuple)
     spearman = calculate_spearman(true, pred, return_tuple=return_tuple)

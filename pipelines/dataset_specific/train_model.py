@@ -10,27 +10,24 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # TODO: solve later using setup.py
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from utils.transformers import (CLRTransformer, Log1pMinMaxScaler, 
-                                IdentityScaler)
 from utils.train_test import (series_to_supervised, split_reframed,
                               prepare_sequential_data, 
                               prepare_supervised_data)
-from models.baseline import (naive_predictor, SupervisedMLP, 
-                             SequentialMLP)
+from models.baseline import SupervisedMLP, SequentialMLP
 from models.baseline_with_diff import SupervisedDiffMLP, SequentialDiffMLP
-from pipelines.baseline_config import (STEPS_IN, STEPS_OUT, TRAIN_TEST_SPLIT,
-                                       EPOCHS, BATCH_SIZE, TRAIN_OVERLAP, 
-                                       TRAIN_SHUFFLE, FIT_SHUFFLE, DATA_PATH, 
-                                       MAIN_PATH, _dict_to_str)
+from pipelines.dataset_specific.baseline_config import (STEPS_IN, STEPS_OUT, 
+                                       TRAIN_TEST_SPLIT, EPOCHS, BATCH_SIZE, 
+                                       FIT_SHUFFLE, DATA_PATH, MAIN_PATH, 
+                                       _dict_to_str)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train model.")
 
     parser.add_argument("-m", "--model_name", required=True, 
-                        help="Name of the model e.g. 'mlp', 'naive'")
+                        help="Name of the model e.g. 'mlp'")
     parser.add_argument("-i", "--model_input", required=False, 
                         default='supervised', help="Model input type "
                         "('supervised' or 'sequential')")
@@ -38,6 +35,9 @@ def parse_args():
                         help="Scaler name e.g. 'minmax', 'clr_0_False'")
     parser.add_argument("-d", "--dataset_name", required=True, 
                         help="Dataset name e.g. 'donorA', 'male'")
+    parser.add_argument("-t", "--train_val_params", required=True, 
+                        type=json.loads,
+                        help="Dictionary of train/val split parameters.'")
     parser.add_argument("-k", "--kwargs", required=True, type=json.loads,
                         help="Dictionary of additional named arguments.'")
     return parser.parse_args()
@@ -49,24 +49,28 @@ def main():
     args = parse_args()
     mname = args.model_name
     itype = args.model_input
-    sname = args.scaler_name
+    sname = args.scaler_name  # NOT USED YET !!!
     dname = args.dataset_name
+    train_val_params = args.train_val_params
     kwargs = args.kwargs
        
-    print(f"Training model for: {mname}, {itype}, {sname}, {dname}, {kwargs}")
+    print(f"Training model for: {mname}, {itype}, {sname}, {dname},"\
+          f"{train_val_params}, {kwargs}")
 
     OUT_PATH = MAIN_PATH /\
-    f"{mname}_{itype}_{sname}_{dname}{_dict_to_str(kwargs)}"
+    f"{mname}_{itype}_{sname}_{dname}{_dict_to_str(train_val_params)}"\
+    f"{_dict_to_str(kwargs)}"
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     # Load data
-
-    dataset = pd.read_csv(DATA_PATH / f"{dname}_{sname}.csv", index_col=0)
-    dataset_original = pd.read_csv(DATA_PATH / f"{dname}.csv", index_col=0)
-    scaler = joblib.load(DATA_PATH / f'scaler_{dname}_{sname}.obj')
-        
-    assert dataset.shape == dataset_original.shape
-
+    
+    dataset = pd.read_csv(DATA_PATH / "filtered_transformed" /\
+                          f"{dname}.csv", index_col=0)
+    dataset_original = pd.read_csv(DATA_PATH / "original" /\
+                                   f"{dname.split('_')[0]}.csv", index_col=0)
+    # transformer used for preprocessing
+    transformer = joblib.load(DATA_PATH / f'scaler_{dname}.obj')
+    
     columns = [1, 5, 100, 150]
     plt.figure(figsize=(10, 7))
     plt.suptitle(f"{sname}, {dname}")
@@ -76,17 +80,17 @@ def main():
         # plt.plot(dataset_original.iloc[:, column])
         plt.title(column, y=0.5, loc='right')
     plt.tight_layout()
-    plt.savefig(OUT_PATH / f"scaler_example.png")
+    plt.savefig(OUT_PATH / f"transformer_example.png")
     
     # Prepare training / validation data
     
     reframed = series_to_supervised(dataset.values, STEPS_IN, STEPS_OUT)
-    train_X, train_y, test_X, test_y = split_reframed(reframed, 
-                                                      len(dataset.columns), 
-                                                      TRAIN_TEST_SPLIT, 
-                                                      STEPS_IN,
-                                                      overlap=TRAIN_OVERLAP,
-                                                      shuffle=TRAIN_SHUFFLE)
+
+    train_X, train_y, test_X, test_y, train_indices_y, test_indices_y =\
+    split_reframed(reframed, len(dataset.columns), TRAIN_TEST_SPLIT, STEPS_IN,
+    overlap=train_val_params['overlap'], shuffle=train_val_params['shuffle'], 
+    return_indices=True) 
+    
     print(f"\nDataset shape: {dataset.shape}")
     print(f"Reframed shape: {reframed.shape}")
     print("\nInitial shapes:")
@@ -102,7 +106,7 @@ def main():
     assert in_steps == STEPS_IN
     assert in_features == dataset.shape[1]
     assert out_features == dataset.shape[1] * STEPS_OUT
-    
+ 
     print("\nFinal shapes:")
     if itype == 'supervised':
         train_X, test_X = prepare_supervised_data(train_X, test_X)
@@ -129,61 +133,58 @@ def main():
         model = SequentialMLP(in_steps, in_features, 
                                out_features, pred_activation=pred_activation,
                                **kwargs)
-    elif mname == 'mlp_diff' and itype == 'supervised':
+    elif mname == 'mlp-diff' and itype == 'supervised':
         model = SupervisedDiffMLP(in_steps, in_features, 
                                out_features, pred_activation=pred_activation,
                                **kwargs)    
         model.compile(optimizer='adam', loss='mae')
-    elif mname == 'mlp_diff' and itype == 'sequential':
+    elif mname == 'mlp-diff' and itype == 'sequential':
         model = SequentialDiffMLP(in_steps, in_features, 
                                out_features, pred_activation=pred_activation,
                                **kwargs)
-    elif mname == 'naive' and itype == 'supervised':
-        model = naive_predictor('sup', in_features, STEPS_IN, STEPS_OUT) 
-    elif mname == 'naive' and itype == 'sequential':
-        model = naive_predictor('seq', in_features, STEPS_IN, STEPS_OUT) 
     else:
         raise NotImplementedError
     
-    if mname != 'naive':
+    model.compile(optimizer='adam', loss='mae')
 
-        model.compile(optimizer='adam', loss='mae')
-        
-        # Fit model
+    # Fit model
 
-        history = model.fit(train_X, train_y, epochs=EPOCHS, 
-                            validation_data=(test_X, test_y), 
-                            batch_size=BATCH_SIZE, verbose=0, 
-                            shuffle=FIT_SHUFFLE)
+    history = model.fit(train_X, train_y, epochs=EPOCHS, 
+                        validation_data=(test_X, test_y), 
+                        batch_size=BATCH_SIZE, verbose=0, 
+                        shuffle=FIT_SHUFFLE)
 
-        # Plot history
+    # Plot history
 
-        plt.figure()
-        plt.plot(history.history['loss'], label='train')
-        plt.plot(history.history['val_loss'], label='test')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.title(f"{mname}, {itype}, {sname}, {dname}")
-        plt.savefig(OUT_PATH / f"fit.png")
+    plt.figure()
+    plt.plot(history.history['loss'], label='train')
+    plt.plot(history.history['val_loss'], label='test')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title(f"{mname}, {itype}, {sname}, {dname}, "\
+              f"{train_val_params['overlap']}, "\
+              f"{train_val_params['shuffle']}")
+    plt.savefig(OUT_PATH / f"fit.png")
 
-        # Save model
+    # Save model
 
-        model.save(OUT_PATH / 'model', save_format='tf')
-    else:
-        with open(OUT_PATH / 'model.pkl', 'wb') as f:
-            pickle.dump(model, f)
+    model.save(OUT_PATH / 'model', save_format='tf')
         
     # Save traininig / validation data for later evaluation
     
-    data = {'train_X': train_X, 'train_y': train_y,
-            'val_X': test_X, 'val_y': test_y}
+    data = {'train_X': train_X, 'train_y': train_y, 
+            'val_X': test_X, 'val_y': test_y, 
+            'train_indices_y': train_indices_y, 
+            'val_indices_y': test_indices_y}
     np.savez(OUT_PATH / f'train_val_data', **data)
     
     # Create and save output config
     
     model_config = {
         'dataset name': dname,
+        'dataset shape': dataset.shape,
+        'dataset original shape': dataset_original.shape,
         'scaler name': sname,
         'model name': mname,
         'input type': itype,
@@ -195,8 +196,8 @@ def main():
         'train/validation split': TRAIN_TEST_SPLIT,
         'epochs': EPOCHS,
         'batch size': BATCH_SIZE,
-        'train overlap': TRAIN_OVERLAP,
-        'train shuffle': TRAIN_SHUFFLE,
+        'train overlap': train_val_params['overlap'],
+        'train shuffle': train_val_params['shuffle'],
         'fit shuffle': FIT_SHUFFLE,
         **kwargs
     }

@@ -5,6 +5,10 @@ import numpy.ma as ma
 from scipy.stats import gmean
 from sklearn.preprocessing import MinMaxScaler
     
+    
+#=========
+# Helpers
+#=========
 
 def _transform_type(X):
     if type(X) is not pd.DataFrame:
@@ -12,6 +16,28 @@ def _transform_type(X):
     else:
         return X
 
+    
+def inverse_through_timesteps_wrapper(scaler, dataset, predictions, sparams):
+    """
+    Use this wrapper if your scaler inverse transform is performed
+    on timesteps e.g. clr-1.
+    """
+    # Merge all predictions into one dataframe
+    y = pd.concat([pd.DataFrame(**d) for d in predictions])
+    # Adjust index (timesteps) to match the dataset index
+    y = y.sort_index().reindex(dataset.index)
+    # Inverse transform
+    inv_y = scaler.inverse_transform(y, **sparams)
+    # Return inverted predictions
+    inv_y_sets = []
+    for d in predictions:
+        inv_y_sets.append(inv_y.loc[d['index']])
+    return inv_y_sets        
+
+
+#==============
+# Transformers
+#==============
 
 class RCLRTransformer:
     """Transform features using Robust Centered Log-Ratio 
@@ -98,32 +124,44 @@ class CLRTransformer:
     -----
     pandas.DataFrame with rows (axis=0) as samples and 
     columns (axis=1) as features.
-
+    
     Parameters
     ----------
     axis : int (0, 1 or None), default=1
         Specifies direction in which geometric mean is computed.
         If None, compute geometric mean globally (scalar value).
         
-    pseudo_perc : float, default=0.01
-        Percentage of a minimum value in the input table which is
-        then used as a pseudocunt.
+    pseudo_mode : str, 'perc' or 'value', default='perc'
+        Either to use the `pseudo_value` as absolute pseudocount value 
+        (choose 'value') or as percentage of a minimum value in the input
+        table / axis (choose 'perc').
+        
+    pseudo_value : float, default=0.01
+        Absolute value or percentage of a minimum value in the input
+        table / axis which is then used as a pseudocunt (see also a 
+        `pseudo_mode` parameter above).
         
     is_pseudo_global : bool, default=False
         If pseudocount is a global value (scaled minimum of the 
         whole input table). If False, then compute minimum
         using the `axis` parameter.
         
+    add_pseudo_to_zeros_only : bool, default=True
+        If pseudocounts should be added everywhere (False) or 
+        only to zero entries (True).
+        
     References
     ----------
     [1] https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6755255/
     """
 
-    def __init__(self, axis=1, pseudo_perc=0.01, 
-                 is_pseudo_global=False):
+    def __init__(self, axis=1, pseudo_mode='perc', pseudo_value=0.01, 
+                 is_pseudo_global=False, add_pseudo_to_zeros_only=True):
         self.axis = axis
-        self.pseudo_perc = pseudo_perc
+        self.pseudo_mode = pseudo_mode
+        self.pseudo_value = pseudo_value
         self.is_pseudo_global = is_pseudo_global
+        self.add_pseudo_to_zeros_only = add_pseudo_to_zeros_only
         # Pseudocounts can be added either globally or accross
         # the same axis which is used for geometric mean.
         if self.is_pseudo_global:
@@ -135,20 +173,31 @@ class CLRTransformer:
         return self.fit(X).transform(X)
 
     def _add_pseudocounts(self, X):
-        # Add pseudocounts to zero-valued entries in X.
-        X_zeros = ma.masked_array(X, mask=[X != 0])
-        if self.axis == 1:
-            X_pseudo = (X_zeros.T + self.min_).T
+        if self.add_pseudo_to_zeros_only:
+            # Add pseudocounts only to zero-valued entries in X
+            masks = [[X != 0], [X == 0]]
         else:
-            X_pseudo = X_zeros + self.min_
+            masks = [False, False]
+        X_zeros = ma.masked_array(X, mask=masks[0])
+        X_nonzeros = ma.masked_array(X, mask=masks[1])
+        # Compute pseudocount
+        if self.pseudo_mode == 'perc':
+            self.pseudo_count_ = np.min(X_nonzeros, 
+                               axis=self.pseudo_axis) * self.pseudo_value
+        elif self.pseudo_mode == 'value':
+            self.pseudo_count_ = self.pseudo_value   
+        else:
+            raise ValueError(f'self.pseudo_mode cannot be {self.pseudo_mode}')
+        # Add pseudocount
+        if self.pseudo_axis == 1:
+            X_pseudo = (X_zeros.T + self.pseudo_count_).T
+        else:
+            X_pseudo = X_zeros + self.pseudo_count_
         return X_pseudo   
     
     def fit(self, X):
         # Compute and add pseudocounts to zero-valued entries
         # and then compute geometric mean for later transforming.
-        X_nonzeros = ma.masked_array(X, mask=[X == 0])
-        self.min_ = np.min(X_nonzeros, 
-                           axis=self.pseudo_axis) * self.pseudo_perc
         X_pseudo = self._add_pseudocounts(X)
         self.gmean_ = gmean(X_pseudo.data, axis=self.axis)
         return self 
@@ -178,13 +227,21 @@ class CLRTransformer:
         if self.axis is None:
             X = np.exp(X_trans) * self.gmean_
             if remove_pseudocounts:
-                X -= ~mask * self.min_
+                if self.add_pseudo_to_zeros_only:
+                    X -= ~mask * self.pseudo_count_
+                else:
+                    X -= self.pseudo_count_
         else:
             X = np.exp(X_trans).multiply(
                 self.gmean_, axis=abs(self.axis-1))
             if remove_pseudocounts:
-                X -= pd.DataFrame(~mask).multiply(self.min_, 
-                                                  axis=abs(self.axis-1))
+                if self.add_pseudo_to_zeros_only:
+                    X -= pd.DataFrame(~mask).multiply(self.pseudo_count_, 
+                                                      axis=abs(self.axis-1))
+                else:
+                    X -= pd.DataFrame(data=True, index=X.index, 
+                                      columns=X.columns).multiply(
+                        self.pseudo_count_, axis=abs(self.axis-1))               
         return X
     
 
@@ -223,6 +280,7 @@ class Log1pMinMaxScaler:
         X = np.exp(X) - 1
         return X
 
+    
 class IdentityScaler:
     """Does nothing with the input data.
 
@@ -248,8 +306,11 @@ class IdentityScaler:
         return X
     
     
+#=======
+# Tests
+#=======
+    
 def _test_RCLRTransformer():
-    # TODO create unit test
     X = pd.DataFrame(np.array([[1, 0, 3, 6], 
                                [4, 5, 6, 7], 
                                [2, 5.5, 6, 8.2]]))
@@ -315,11 +376,13 @@ def _test_RCLRTransformer():
     
 
 def _test_CLRTransformer():
-    # TODO create unit test
     X = pd.DataFrame(np.array([[1, 0, 3, 6], 
                                [4, 5, 6, 0.7], 
                                [2, 5.5, 0, 8.2]]))
 
+    # Test `pseudo_axis` and `is_pseudo_global` parameters
+    # for `pseudo_mode='perc'` and `add_pseudo_to_zeros_only=True`
+    
     expected_1_False = np.array([[ 0.42869961, -4.17647058,  1.5273119 ,  2.22045908],
                                  [ 0.27859016,  0.50173371,  0.68405527, -1.46437914],
                                  [ 0.54564558,  1.55724649, -4.05952461,  1.95663255]])
@@ -343,21 +406,21 @@ def _test_CLRTransformer():
     # fit
     transformer = CLRTransformer()
     transformer.fit(X) 
-    assert np.allclose(transformer.min_, [0.01, 0.007,0.02])
+    assert np.allclose(transformer.pseudo_count_, [0.01, 0.007,0.02])
     
     transformer = CLRTransformer(axis=0)
     transformer.fit(X) 
-    assert np.allclose(transformer.min_, [0.01, 0.05, 0.03, 0.007])
+    assert np.allclose(transformer.pseudo_count_, [0.01, 0.05, 0.03, 0.007])
     
     transformer = CLRTransformer(axis=None)
     transformer.fit(X) 
-    assert np.allclose(transformer.min_, 0.007)
+    assert np.allclose(transformer.pseudo_count_, 0.007)
 
     for axis in [0, 1, None]:
-        transformer = CLRTransformer(axis=axis, pseudo_perc=0.05,
+        transformer = CLRTransformer(axis=axis, pseudo_value=0.05,
                                      is_pseudo_global=True)
         transformer.fit(X) 
-        assert np.allclose(transformer.min_, 0.035)
+        assert np.allclose(transformer.pseudo_count_, 0.035)
     
     # fit transform
     transformer = CLRTransformer()
@@ -421,11 +484,49 @@ def _test_CLRTransformer():
     inv_res_None_True = transformer.inverse_transform(res_None_True, X!=0)
     assert np.allclose(inv_res_None_True.values, X)
 
+    # test `add_pseudo_to_zeros_only` parameter
+    # for `pseudo_mode='value'` and `is_pseudo_global=True`
+
+    expected = np.array([[-0.30845271, -1.34454465,  0.52023996,  1.1327574 ],
+                         [ 0.18224379,  0.38091449,  0.54658161, -1.10973989],
+                         [-0.14074872,  0.72321619, -1.67467908,  1.09221162]])
+ 
+    transformer = CLRTransformer(axis=1, is_pseudo_global=True, 
+                                 pseudo_mode='value', pseudo_value=0.55, 
+                                 add_pseudo_to_zeros_only=False)
+    transformer.fit(X) 
+    res = transformer.transform(X) 
+    assert np.allclose(res, expected)
+    res = transformer.fit_transform(X)
+    inv_res = transformer.inverse_transform(res, remove_pseudocounts=False)
+    assert np.allclose(inv_res, X + 0.55)
+    inv_res = transformer.inverse_transform(res, remove_pseudocounts=True)
+    assert np.allclose(inv_res, X)
+
+    expected = np.array([[-0.57313369, -1.17097069,  0.5254786 ,  1.21862578],
+                         [ 0.27859016,  0.50173371,  0.68405527, -1.46437914],
+                         [-0.28290093,  0.72869999, -1.57388511,  1.12808605]])
+
+    expected_inv_False = np.array([[1, 0.55, 3, 6], 
+                                   [4, 5, 6, 0.7], 
+                                   [2, 5.5, 0.55, 8.2]])
+    
+    transformer = CLRTransformer(axis=1, is_pseudo_global=True, 
+                                 pseudo_mode='value',  pseudo_value=0.55, 
+                                 add_pseudo_to_zeros_only=True)
+    transformer.fit(X) 
+    res = transformer.transform(X) 
+    assert np.allclose(res, expected)
+    res = transformer.fit_transform(X)
+    inv_res = transformer.inverse_transform(res, remove_pseudocounts=False)
+    assert np.allclose(inv_res, expected_inv_False)
+    inv_res = transformer.inverse_transform(res, X!=0, remove_pseudocounts=True)
+    assert np.allclose(inv_res, X)
+
     print("CLR tests passed.")
     
 
 def _test_Log1pMinMaxScaler():
-    # TODO create unit test
     X = pd.DataFrame(np.array([[1, 0, 3, 6], 
                                [4, 5, 6, 0.7], 
                                [2, 5.5, 0, 8.2]]))
@@ -450,7 +551,6 @@ def _test_Log1pMinMaxScaler():
     
 
 def _test_IdentityScaler():
-    # TODO create unit test
     X = pd.DataFrame(np.array([[1, 0, 3, 6], 
                                [4, 5, 6, 0.7], 
                                [2, 5.5, 0, 8.2]]))

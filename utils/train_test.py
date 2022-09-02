@@ -42,7 +42,8 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
 
 
 def split_reframed(reframed, cols, train_test_split=0.8, 
-                   in_steps=1, overlap=True, shuffle=True):
+                   in_steps=1, overlap=True, shuffle=True,
+                   return_indices=False):
     """
     Split data into train/validation sets.
    
@@ -59,37 +60,48 @@ def split_reframed(reframed, cols, train_test_split=0.8,
     then the test samples are taken from the end of the dataset.
     
     Finally, the data is split into train/test parts.
+    
+    Note: if you need to link the train/val data with the original dataframe,
+    use `return_indices=True`.
     """
-    # number of slices
+    # 1) Prepare indices list
+    indices = reframed.index
+    # skip last rows if needed
     if overlap:
-        slices = in_steps
+        skipped = in_steps-1
     else:
-        slices = 1
-    values_reshaped = []
-    for i in range(slices):
-        # shift the data by one row
-        values = reframed[i:].values.copy()
-        # We need to skip last rows in order to perform reshaping
-        skipped = (len(values) % in_steps)
-        if skipped:
-            values = values[:-skipped]
-        # 1) Reshape data
-        # Only the first dimension will be shuffled (below)
-        values_reshaped.append(values.reshape(-1, in_steps, reframed.shape[1]))
-    values_reshaped = np.vstack(values_reshaped)
-    # 2) Shuffle data
+        skipped = len(indices) % in_steps
+    if skipped:
+        indices = indices[:-skipped]
+    # remove indices overlap
+    if not overlap:
+        indices = indices[::in_steps]
+
+    # 2) Divide data into pieces and reshape
+    if in_steps > 1:
+        values = [reframed.loc[i:i+in_steps-1].values for i in indices]
+    else:
+        values = [reframed.loc[i].values for i in indices]
+    # Only the first dimension will be shuffled (below)
+    values = np.array(values).reshape(len(indices), in_steps, reframed.shape[1])
+
+    # 3) Shuffle data
     # Note 1: original input dataframe will be shuffled as well !!!!
     # Note 2: it concerns only the first dimension (i.e. groups of 
     #`in_steps x cols` elements)
+    order = np.array(range(len(indices)))
     if shuffle:
-        np.random.shuffle(values_reshaped)
-    # 3) Split data
+        np.random.shuffle(order)
+        values = values[order]
+        indices = indices[order]
+
+    # 4) Split data
     all_features = cols * in_steps
-    train_last_id = int(values_reshaped.shape[0] * train_test_split)
-    train_X, train_y = values_reshaped[:train_last_id, :, :all_features], \
-    values_reshaped[:train_last_id, :, all_features:]
-    test_X, test_y = values_reshaped[train_last_id:, :, :all_features], \
-    values_reshaped[train_last_id:, :, all_features:]
+    train_last_id = int(values.shape[0] * train_test_split)
+    train_X, train_y = values[:train_last_id, :, :all_features], \
+    values[:train_last_id, :, all_features:]
+    test_X, test_y = values[train_last_id:, :, :all_features], \
+    values[train_last_id:, :, all_features:]
     # Use only first time step for y
     train_y = train_y[:, 0, :] 
     test_y = test_y[:, 0, :]
@@ -97,9 +109,18 @@ def split_reframed(reframed, cols, train_test_split=0.8,
     # (using everything would introduce redundancy)
     train_X = train_X[:, :, :cols] 
     test_X = test_X[:, :, :cols]
-    # Check if all dimensions agree
-    assert len(values_reshaped) == (train_X.shape[0] + test_X.shape[0]) 
-    return train_X, train_y, test_X, test_y
+
+    train_indices_y = indices[:train_last_id]
+    test_indices_y = indices[train_last_id:]
+    assert len(values) == (train_X.shape[0] + test_X.shape[0]) 
+    assert (train_y[:,:2] == reframed.loc[train_indices_y, 
+                                          ['var1(t)', 'var2(t)']].values).all()
+    assert (test_y[:,:2] == reframed.loc[test_indices_y, 
+                                         ['var1(t)', 'var2(t)']].values).all()
+    if return_indices:
+        return train_X, train_y, test_X, test_y, train_indices_y, test_indices_y
+    else:
+        return train_X, train_y, test_X, test_y
 
 
 def prepare_sequential_data(train_X, test_X=None, in_features=1):
@@ -125,7 +146,7 @@ def prepare_supervised_data(train_X, test_X=None, order='C'):
     e.g. var1(t-2), var2(t-2), var1(t-1), var2(t-1)
     
     If order='F', put features one after another:
-    e.g. var1(t-2), var1(t-1), var2(t-2), var1(t-1)
+    e.g. var1(t-2), var1(t-1), var2(t-2), var2(t-1)
     """
     if len(train_X.shape) == 3:
         train_X_reshaped = train_X.reshape((train_X.shape[0], -1), 
